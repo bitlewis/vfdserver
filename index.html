@@ -25,6 +25,7 @@
         .control-panel button.set-speed { background-color: #128115; color: white; }
         .control-panel input[type="number"] { padding: 10px; border: 1px solid #999999; border-radius: 5px; width: 100px; }
         .control-events-panel { position: fixed; top: 0; right: 0; width: 300px; height: 100vh; background-color: #fff; padding: 20px; border-left: 1px solid #ddd; overflow-y: auto; }
+        @media (max-width: 768px) { .control-events-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 1px solid #ddd; } }
         .control-events-panel h2 { margin-top: 0; }
         .control-event { padding: 10px; border-bottom: 1px solid #ddd; }
         .control-event:last-child { border-bottom: none; }
