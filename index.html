@@ -30,7 +30,8 @@
         .control-event:last-child { border-bottom: none; }
         .event-box { padding: 4px; border-radius: 4px; font-size: 12px; display: inline-block; cursor: not-allowed; }
         .devices-box { padding: 4px; border-radius: 4px; font-size: 10px; display: inline-block; cursor: not-allowed; }
-        .timestamp {font-size: 14px; }
+        .timestamp { font-size: 14px; display:inline-block; border-bottom:2px solid black; margin-bottom: 2px; }
+        .action-text { font-size: 12px; }
     </style>
     <script>
         let expandedPods = JSON.parse(localStorage.getItem("expandedPods")) || {};
@@ -223,7 +224,7 @@
                 
                 eventDiv.innerHTML = `
                     <div>
-                        <span class="timestamp">${formattedDate}:</span> 
+                        <span class="timestamp">${formattedDate}</span>
                         <span class="event-box" style="background-color: #007bff; color: white;">
                         ${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</span>
                     </div>
