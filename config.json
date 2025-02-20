@@ -6,7 +6,7 @@
       "Unit": 1,
       "Pod": 1,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.12",
@@ -14,7 +14,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.13",
@@ -22,7 +22,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.14",
@@ -30,7 +30,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.21",
@@ -38,7 +38,7 @@
       "Unit": 1,
       "Pod": 2,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.22",
@@ -46,7 +46,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 2,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.23",
@@ -54,7 +54,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 2,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.24",
@@ -62,7 +62,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 2,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.31",
@@ -70,7 +70,7 @@
       "Unit": 1,
       "Pod": 3,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.32",
@@ -78,7 +78,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 3,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.33",
@@ -86,7 +86,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 3,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.34",
@@ -94,7 +94,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 3,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.41",
@@ -102,7 +102,7 @@
       "Unit": 1,
       "Pod": 4,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.42",
@@ -110,7 +110,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 4,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.43",
@@ -118,7 +118,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 4,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.44",
@@ -126,7 +126,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 4,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.51",
@@ -134,7 +134,7 @@
       "Unit": 1,
       "Pod": 5,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.52",
@@ -142,7 +142,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 5,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.53",
@@ -150,7 +150,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 5,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.54",
@@ -158,7 +158,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 5,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.61",
@@ -166,7 +166,7 @@
       "Unit": 1,
       "Pod": 6,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.62",
@@ -174,7 +174,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 6,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.63",
@@ -182,7 +182,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 6,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.64",
@@ -190,7 +190,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 6,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.71",
@@ -198,7 +198,7 @@
       "Unit": 1,
       "Pod": 7,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.72",
@@ -206,7 +206,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 7,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.73",
@@ -214,7 +214,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 7,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.74",
@@ -222,7 +222,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 7,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.81",
@@ -230,7 +230,7 @@
       "Unit": 1,
       "Pod": 8,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.82",
@@ -238,7 +238,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 8,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.83",
@@ -246,7 +246,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 8,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.84",
@@ -254,7 +254,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 8,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.91",
@@ -262,7 +262,7 @@
       "Unit": 1,
       "Pod": 9,
       "FanNumber": 1,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.92",
@@ -270,7 +270,7 @@
       "Unit": 1,
       "FanNumber": 2,
       "Pod": 9,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.93",
@@ -278,7 +278,7 @@
       "Unit": 1,
       "FanNumber": 3,
       "Pod": 9,
-      "RpmHz": 1
+      "RpmHz": 30
     },
     {
       "IP": "10.33.30.94",
@@ -286,7 +286,7 @@
       "Unit": 1,
       "FanNumber": 4,
       "Pod": 9,
-      "RpmHz": 1
+      "RpmHz": 30
     }
   ]
 }
