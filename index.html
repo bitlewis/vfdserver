@@ -5,15 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
     <title>BLU02 VFD Control</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7fc;}
         .container { position: relative; width: 100%; }
         .header { position: fixed; top: 0; left: 0; width: 100%; background-color: #f4f7fc; text-align: center; }
-        h1 { text-align: center; color: #333; font-size: 32px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
+        h1 { text-align: center; color: #333; font-size: 42px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
         .pod { margin-bottom: 10px; }
-        .pod-title { cursor: pointer; font-size: 18px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; padding: 10px; border-radius: 5px; padding: 10px; }
+        .pod-title-container { display: flex; align-items: center; }
+        .pod-title { width: 80%; cursor: pointer; font-size: 18px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; border-radius: 5px; padding: 10px; }
         .drive-list { display: none; padding-left: 15px; }
         .drive-item { padding: 5px; background: #fff; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; }
         input[type="checkbox"] { margin-right: 10px; }
@@ -34,16 +36,16 @@
         .drives-panel { float: left; width: 83%; padding-bottom: 20px; }
         .control-events-panel { float: right; width: 15%; background-color: #fff; padding: 20px; overflow-y: auto; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
         @media (max-width: 768px) { .control-events-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 1px solid #ddd; } }
-        .control-events-panel h2 { margin-top: 0; font-size: 18px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
+        .control-events-panel h2 { margin-top: 0; font-size: 25px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
         .control-event { padding: 10px; border-bottom: 1px solid #ddd; }
         .control-event:last-child { border-bottom: none; }
         .event-box { padding: 4px; border-radius: 4px; font-size: 12px; display: inline-block; cursor: not-allowed; }
         .devices-box { padding: 4px; border-radius: 4px; font-size: 10px; display: inline-block; cursor: not-allowed; }
         .timestamp { font-size: 14px; display:inline-block; border-bottom:2px solid black; margin-bottom: 2px; }
         .action-text { font-size: 12px; }
-        .control-button-title { font-size: 18px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; margin-bottom: 10px; }
+        .control-button-title { font-size: 20px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; margin-bottom: 10px; }
         .fan-buttons { float: left; }
-        .speed-legend { font-size: 14px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 500; }
+        .speed-legend { font-size: 14px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 500; }
         .vfd-buttons { float: right; }
     </style>
     <script>
@@ -85,8 +87,13 @@
                 let podDiv = document.createElement("div");
                 podDiv.className = "pod";
 
+                let podTitleContainer = document.createElement("div");
+                podTitleContainer.style.display = "flex";
+                podTitleContainer.style.alignItems = "center";
+
                 let podTitle = document.createElement("div");
                 podTitle.className = "pod-title";
+                podTitle.style.width = "92%"; // Reduce the width of the POD title
                 podTitle.innerHTML = `POD ${pod}`;
                 podTitle.addEventListener("click", function () {
                     const list = podDiv.querySelector(".drive-list");
@@ -95,16 +102,17 @@
                     localStorage.setItem("expandedPods", JSON.stringify(expandedPods));
                 });
 
+                let selectAllDiv = document.createElement("div");
+                selectAllDiv.style.marginLeft = "10px";
+                let selectAllChecked = pods[pod].every(drive => currentCheckboxStates[drive.ip] === true); // Check if all drives are selected
+                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-pod="${pod}" ${selectAllChecked ? 'checked' : ''}> Select All`;
+
+                podTitleContainer.appendChild(podTitle);
+                podTitleContainer.appendChild(selectAllDiv);
+
                 let driveList = document.createElement("div");
                 driveList.className = "drive-list";
                 driveList.style.display = expandedPods[pod] ? "block" : "none";
-
-                // Add the "Select All" checkbox inside the drive list
-                let selectAllDiv = document.createElement("div");
-                selectAllDiv.className = "select-all-container";
-                let selectAllChecked = pods[pod].every(drive => currentCheckboxStates[drive.ip] === true); // Check if all drives are selected
-                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-pod="${pod}" ${selectAllChecked ? 'checked' : ''}> Select All`;
-                driveList.appendChild(selectAllDiv);
 
                 pods[pod].forEach(drive => {
                     let driveItem = document.createElement("div");
@@ -158,7 +166,7 @@
 
                     driveList.appendChild(driveItem);
                 });
-                podDiv.appendChild(podTitle);
+                podDiv.appendChild(podTitleContainer);
                 podDiv.appendChild(driveList);
                 container.appendChild(podDiv);
             }
@@ -202,6 +210,11 @@
 
 
         function sendControl(action, speed = null) {
+            if (action === 'SetSpeed' && (!speed || speed.trim() === '')) {
+                alert('Please enter a speed value');
+                return;
+            }
+
             let selectedDrives = Array.from(document.querySelectorAll(".drive-checkbox:checked"))
                 .map(cb => cb.dataset.ip);
 
