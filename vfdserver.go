@@ -60,8 +60,8 @@ func main() {
 	http.HandleFunc("/control", handleControl)
 	http.HandleFunc("/control-events", handleControlEvents)
 
-	log.Println("VFD Control Server v2.1 by Louis Valois - for AAIMDC BLU02 Site\nWeb server started on http://localhost:8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Println("VFD Control Server v2.1 by Louis Valois - for AAIMDC BLU02 Site\nWeb server started on http://10.33.10.53")
+	log.Fatal(http.ListenAndServe("10.33.10.53:80", nil))
 }
 
 func loadConfig(filename string) (VFDConfig, error) {
@@ -127,6 +127,16 @@ func statusToString(status int) string {
 	default:
 		return "Unknown"
 	}
+}
+
+func fanStop(client modbus.Client) error {
+	_, err := client.WriteSingleRegister(0, 0)
+	return err
+}
+
+func fanStart(client modbus.Client) error {
+	_, err := client.WriteSingleRegister(0, 1)
+	return err
 }
 
 func freeSpin(client modbus.Client) error {
@@ -309,7 +319,7 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate action
-	if controlData.Action != "Freespin" && controlData.Action != "Fanhold" && controlData.Action != "SetSpeed" {
+	if controlData.Action != "Freespin" && controlData.Action != "Fanhold" && controlData.Action != "SetSpeed" && controlData.Action != "Restart" && controlData.Action != "Stop" {
 		http.Error(w, "Invalid action", http.StatusBadRequest)
 		return
 	}
@@ -361,6 +371,10 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
 
 func executeControl(client modbus.Client, action string, speed float64) error {
     switch action {
+    case "Restart":
+        return fanStart(client)				
+    case "Stop":
+        return fanStop(client)		
     case "Fanhold":
         return fanHold(client)
     case "Freespin":
