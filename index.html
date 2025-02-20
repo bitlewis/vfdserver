@@ -145,7 +145,7 @@
                     driveItem.innerHTML = `
                         <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-pod="${pod}" ${checked ? 'checked' : ''} ${drive.status === 'Unknown' ? 'disabled' : ''}>
                         <span>
-                            #${drive.fanNumber} - ${drive.ip} >> 
+                            Fan #${drive.fanNumber} - ${drive.ip} >> 
                             <span class="status-box grey" style="width: 60px; text-align: center;">${drive.setSpeed} Hz</span> 
                             <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualSpeed} Hz</span> 
                             <span class="status-box blue" style="width: 80px; text-align: center;">${drive.rpmSpeed} RPM</span> 
