@@ -419,6 +419,15 @@ var (
         },
         []string{"ip", "pod", "fan_number"},
     )
+
+	vfdamperage = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Namespace: "vfd",
+            Name:     "amperage",
+            Help:     "Current VFD amperage usage",
+        },
+        []string{"ip", "pod", "fan_number"},
+    )
 )
 
 func init() {
@@ -426,6 +435,7 @@ func init() {
     prometheus.MustRegister(vfdstatus)
     prometheus.MustRegister(vfdspeedhz)
     prometheus.MustRegister(vfdspeedrpm)
+	prometheus.MustRegister(vfdamperage)
 }
 
 func updateMetrics() {
@@ -451,7 +461,7 @@ func collectMetrics() {
                 continue
             }
 
-            status, _, actualSpeed, _, err := getDriveStatus(client)
+            status, _, actualSpeed, current, err := getDriveStatus(client)
             if err != nil {
                 log.Printf("Error reading VFD %s status: %v", drive.IP, err)
                 handler.Close()
@@ -467,6 +477,7 @@ func collectMetrics() {
             vfdstatus.With(labels).Set(float64(status))
             vfdspeedhz.With(labels).Set(actualSpeed)
             vfdspeedrpm.With(labels).Set(actualSpeed * float64(drive.RpmToHz))
+            vfdamperage.With(labels).Set(current)
 
             handler.Close()
         }
