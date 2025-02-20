@@ -11,6 +11,8 @@ import (
 
 	"github.com/grid-x/modbus"
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type DriveConfig struct {
@@ -55,10 +57,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	go updateMetrics()
+
 	http.HandleFunc("/", handleLivePage)
 	http.HandleFunc("/ws", handleWebSocket)
 	http.HandleFunc("/control", handleControl)
 	http.HandleFunc("/control-events", handleControlEvents)
+	http.Handle("/metrics", promhttp.Handler())
 
 	log.Println("VFD Control Server v2.1 by Louis Valois - for AAIMDC BLU02 Site\nWeb server started on http://10.33.10.53")
 	log.Fatal(http.ListenAndServe("10.33.10.53:80", nil))
@@ -384,4 +389,87 @@ func executeControl(client modbus.Client, action string, speed float64) error {
     default:
         return fmt.Errorf("invalid action: %s", action)
     }
+}
+
+var (
+    // Define metrics with VFD namespace
+    vfdstatus = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Namespace: "vfd",
+            Name:     "status",
+            Help:     "VFD operational status (1=running, 0=stopped)",
+        },
+        []string{"ip", "pod", "fan_number"},
+    )
+
+    vfdspeedhz = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Namespace: "vfd",
+            Name:     "speed_hz",
+            Help:     "Current VFD speed in Hertz",
+        },
+        []string{"ip", "pod", "fan_number"},
+    )
+
+    vfdspeedrpm = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Namespace: "vfd",
+            Name:     "speed_rpm",
+            Help:     "Current VFD speed in RPM",
+        },
+        []string{"ip", "pod", "fan_number"},
+    )
+)
+
+func init() {
+    // Register metrics
+    prometheus.MustRegister(vfdstatus)
+    prometheus.MustRegister(vfdspeedhz)
+    prometheus.MustRegister(vfdspeedrpm)
+}
+
+func updateMetrics() {
+    // Collect metrics immediately
+    collectMetrics()
+
+    // Then collect periodically
+    ticker := time.NewTicker(60 * time.Second)
+    defer ticker.Stop()
+
+    for range ticker.C {
+        collectMetrics()
+    }
+}
+
+func collectMetrics() {
+    log.Println("Collecting VFD metrics...")
+    for _, drives := range vfdConfig {
+        for _, drive := range drives {
+            client, handler, err := setupModbusClient(drive.IP, drive.Port)
+            if err != nil {
+                log.Printf("Error connecting to VFD %s: %v", drive.IP, err)
+                continue
+            }
+
+            status, _, actualSpeed, _, err := getDriveStatus(client)
+            if err != nil {
+                log.Printf("Error reading VFD %s status: %v", drive.IP, err)
+                handler.Close()
+                continue
+            }
+
+            labels := prometheus.Labels{
+                "ip":         drive.IP,
+                "pod":        fmt.Sprintf("%d", drive.Pod),
+                "fan_number": fmt.Sprintf("%d", drive.FanNumber),
+            }
+
+            vfdstatus.With(labels).Set(float64(status))
+            vfdspeedhz.With(labels).Set(actualSpeed)
+            vfdspeedrpm.With(labels).Set(actualSpeed * float64(drive.RpmToHz))
+
+            handler.Close()
+        }
+    }
+    log.Println("Metrics collection complete")
 }
