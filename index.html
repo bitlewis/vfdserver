@@ -23,7 +23,7 @@
         .blue { background-color: #007bff; color: white; }
         .stale-data { background-color: #d3d3d3; }
         .control-panel { background-color: #fff; margin: 20px; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); position: fixed; top: 60px; width: 96.5%; }
-        .control-panel button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-right: 10px; }
+        .control-panel button { font-size: 16px; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
         .control-panel button.freespin { background-color: #ffa500; color: white; }
         .control-panel button.fanhold { background-color: #f44336; color: white; }
         .control-panel button.set-speed { background-color: #128115; color: white; }
@@ -43,6 +43,7 @@
         .action-text { font-size: 12px; }
         .control-button-title { font-size: 18px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; margin-bottom: 10px; }
         .fan-buttons { float: left; }
+        .speed-legend { font-size: 14px; font-family:"Orbitron", serif; font-optical-sizing: auto; font-style: normal; font-weight: 500; }
         .vfd-buttons { float: right; }
     </style>
     <script>
@@ -240,7 +241,7 @@
                     <div>
                         <span class="timestamp">${formattedDate}</span>
                         <span class="event-box" style="background-color: #007bff; color: white;">
-                        ${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</span>
+                        ${event.action === 'SetSpeed' ? `Set ${event.speed} Hz (${event.speed * 30} RPM)` : event.action}</span>
                     </div>
                     ${event.drives.map(drive => `
                         <span class="devices-box" style="background-color: ${drive.success ? '#4CAF50' : '#f44336'}; color: white;">${drive.ip}${drive.error ? ` - ${drive.error}` : ''}</span>
@@ -249,6 +250,33 @@
                 controlEventsDiv.appendChild(eventDiv);
             });
         }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const hertzInput = document.getElementById('speed-value');
+            const rpmInput = document.getElementById('rpm-value');
+
+            hertzInput.addEventListener('input', function() {
+                const hz = parseFloat(this.value) || 0;
+                rpmInput.value = (hz * 30).toFixed(0);
+            });
+
+            rpmInput.addEventListener('input', function() {
+                const rpm = parseFloat(this.value) || 0;
+                hertzInput.value = (rpm / 30).toFixed(1);
+            });
+
+            setInterval(function() {
+                const hzValue = parseFloat(document.getElementById('speed-value').value);
+                const rpmValue = hzValue * 30;
+                document.getElementById('rpm-value').value = rpmValue.toFixed(0);
+            }, 1000);
+
+            setInterval(function() {
+                const rpmValue = parseFloat(document.getElementById('rpm-value').value);
+                const hzValue = rpmValue / 30;
+                document.getElementById('speed-value').value = hzValue.toFixed(1);
+            }, 1000);
+        });
 
         setInterval(updateControlEvents, 1000);        
     </script>
@@ -260,10 +288,11 @@
         </div>
         <div class="control-panel">
             <div class="fan-buttons"><span class="control-button-title">Fan Controls</span><br>
-                <input type="number" id="speed-value" step=".1" placeholder="Set Speed" required value="1">
+                <input type="number" id="speed-value" step=".1" placeholder="Speed (Hz)" required> <span class="speed-legend">Hz</span>&nbsp;&nbsp;
+                <input type="number" id="rpm-value" step=".1" placeholder="Speed (RPM)" required> <span class="speed-legend">RPM</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 <button class="set-speed" onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>
-                <button class="freespin" onclick="sendControl('Freespin')">Freespin (0hz stop)</button>
-                <button class="fanhold" onclick="sendControl('Fanhold')">Fan Hold</button>
+                <button class="freespin" onclick="sendControl('Freespin')">Freespin (Off)</button>
+                <button class="fanhold" onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
                 <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
             </div>
             <div class="vfd-buttons"><span class="control-button-title">VFD Controls</span><br>
