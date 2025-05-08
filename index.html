@@ -153,11 +153,12 @@
                     driveItem.innerHTML = `
                         <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-pod="${pod}" ${checked ? 'checked' : ''} ${drive.status === 'Unknown' ? 'disabled' : ''}>
                         <span>
-                            Fan #${drive.fanNumber} - ${drive.ip} >> 
-                            <span class="status-box grey" style="width: 60px; text-align: center;">${drive.setSpeed} Hz</span> 
-                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualSpeed} Hz</span> 
-                            <span class="status-box blue" style="width: 80px; text-align: center;">${drive.rpmSpeed} RPM</span> 
-                            <span class="status-box blue" style="width: 50px; text-align: center;">${drive.current} A</span> 
+                            Fan #${drive.fanNumber} - ${drive.ip} >>
+                            <span class="status-box grey" style="width: 60px; text-align: center;">${drive.setSpeed} Hz</span>
+                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualSpeed} Hz</span>
+                            <span class="status-box blue" style="width: 80px; text-align: center;">${drive.rpmSpeed} RPM</span>
+                            <span class="status-box blue" style="width: 100px; text-align: center;">${drive.actualCfm} CFM</span>
+                            <span class="status-box blue" style="width: 50px; text-align: center;">${drive.current} A</span>
                             <span class="status-box" style="background: ${statusColor}; color: white; text-align: center; padding: 4px; border-radius: 4px;">
                                 ${statusText}${countdown}
                             </span>
@@ -205,7 +206,7 @@
                 }
             });
 
-        }               
+        }
         let controlEvents = [];
 
 
@@ -245,11 +246,11 @@
             controlEvents.slice().reverse().forEach(event => {
                 const eventDiv = document.createElement('div');
                 eventDiv.className = 'control-event';
-                
+
                 // Format timestamp as YYYY-MM-DD HH-MM-SS
                 const timestamp = new Date(event.timestamp);
                 const formattedDate = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')} ${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
-                
+
                 eventDiv.innerHTML = `
                     <div>
                         <span class="timestamp">${formattedDate}</span>
@@ -291,7 +292,7 @@
             }, 1000);
         });
 
-        setInterval(updateControlEvents, 1000);        
+        setInterval(updateControlEvents, 1000);
     </script>
 </head>
 <body>
@@ -311,7 +312,7 @@
             <div class="vfd-buttons"><span class="control-button-title">VFD Controls</span><br>
                 <button class="restart" onclick="sendControl('Restart')">Start</button>
                 <button class="stop" onclick="sendControl('Stop')">Stop</button>
-                
+
             </div>
         </div>
         <div class="drives-box">
