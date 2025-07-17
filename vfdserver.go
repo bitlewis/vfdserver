@@ -6,6 +6,7 @@ import (
         "log"
         "net/http"
         "os"
+        "context"
         "time"
         "sync"
         "math"
@@ -20,10 +21,11 @@ type DriveConfig struct {
         Port         int    `json:"Port"`
         Unit         int    `json:"Unit"`
         DefaultSpeed int    `json:"DefaultSpeed"`
-        Pod          int    `json:"Pod"`
+        Group        int    `json:"Group"`
         FanNumber    int    `json:"FanNumber"`
-        RpmToHz      int    `json:"RpmHz"`
-        CfmRpm       float64    `json:"CfmRpm"`
+        FanDesc      string `json:"FanDesc"`
+        RpmToHz      float64    `json:"RpmHz"`
+        CfmRpm       float64  `json:"CfmRpm"`
         LastPull     int64  `json:"-"`
 }
 
@@ -66,8 +68,8 @@ func main() {
         http.HandleFunc("/control-events", handleControlEvents)
         http.Handle("/metrics", promhttp.Handler())
 
-        log.Println("VFD Control Server v2.1 by Louis Valois - for AAIMDC BLU02 Site\nWeb server started on http://10.33.10.53")
-        log.Fatal(http.ListenAndServe("10.33.10.53:80", nil))
+        log.Println("VFD Control Server v2.2 by Louis Valois - for AAIMDC BLU01 Site\nWeb server started on http://10.32.10.53")
+        log.Fatal(http.ListenAndServe("10.32.10.53:80", nil))
 }
 
 func loadConfig(filename string) (VFDConfig, error) {
@@ -99,7 +101,7 @@ func setupModbusClient(ip string, port int) (modbus.Client, *modbus.TCPClientHan
         handler := modbus.NewTCPClientHandler(fmt.Sprintf("%s:%d", ip, port))
         handler.Timeout = 1 * time.Second
         handler.SlaveID = 1
-        err := handler.Connect()
+        err := handler.Connect(context.Background())
         if err != nil {
                 return nil, nil, fmt.Errorf("failed to connect to Modbus server %s: %v", ip, err)
         }
@@ -108,7 +110,7 @@ func setupModbusClient(ip string, port int) (modbus.Client, *modbus.TCPClientHan
 }
 
 func getDriveStatus(client modbus.Client) (int, float64, float64, float64, error) {
-        result, err := client.ReadInputRegisters(0, 9)
+        result, err := client.ReadInputRegisters(context.Background(),0, 9)
         if err != nil {
                 return 0, 0, 0, 0, fmt.Errorf("failed to read status and speed: %v", err)
         }
@@ -136,31 +138,31 @@ func statusToString(status int) string {
 }
 
 func fanStop(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 0)
+        _, err := client.WriteSingleRegister(context.Background(),0, 0)
         return err
 }
 
 func fanStart(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 1)
+        _, err := client.WriteSingleRegister(context.Background(),0, 1)
         return err
 }
 
 func freeSpin(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 0)
-        _, err = client.WriteSingleRegister(1, 0)
+        _, err := client.WriteSingleRegister(context.Background(),0, 0)
+        _, err = client.WriteSingleRegister(context.Background(),1, 0)
         return err
 }
 
 func setFanSpeed(client modbus.Client, setspeed float64) error {
         actualSpeedSet := int(setspeed * 10)
-        _, err := client.WriteSingleRegister(0, 1)
-        _, err = client.WriteSingleRegister(1, uint16(actualSpeedSet))
+        _, err := client.WriteSingleRegister(context.Background(),0, 1)
+        _, err = client.WriteSingleRegister(context.Background(),1, uint16(actualSpeedSet))
         return err
 }
 
 func fanHold(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 1)
-        _, err = client.WriteSingleRegister(1, 0)
+        _, err := client.WriteSingleRegister(context.Background(),0, 1)
+        _, err = client.WriteSingleRegister(context.Background(),1, 0)
         return err
 }
 
@@ -181,12 +183,15 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
     for _, drives := range vfdConfig {
         for _, drive := range drives {
             initialData = append(initialData, map[string]interface{}{
-                "pod":         drive.Pod,
+                "group":       drive.Group,
                 "fanNumber":   drive.FanNumber,
+                "fanDesc":     drive.FanDesc,
                 "ip":          drive.IP,
                 "setSpeed":    0.0,
-                "actualSpeed": 0.0,
-                "rpmSpeed":    0,
+                "actualSpeed": 0.0, 
+                "actualPercent": 0.0,
+                "rpmSpeed":    0,  
+                "actualCfm":   0,
                 "current":     0.0,
                 "status":      "Waiting",
                 "lastUpdated": time.Now().Unix(),
@@ -229,13 +234,15 @@ func getDrivesData() []map[string]interface{} {
         for _, drives := range vfdConfig {
                 for _, drive := range drives {
                         drivesData = append(drivesData, map[string]interface{}{
-                                "pod":         drive.Pod,
-                                "fanNumber":   drive.FanNumber,
+                                "group":       drive.Group,
+                                "fanNumber":   drive.FanNumber, 
+                                "fanDesc":     drive.FanDesc,
                                 "ip":          drive.IP,
                                 "rpmToHz":     float64(drive.RpmToHz),
                                 "cfmRpm":      float64(drive.CfmRpm),
                                 "setSpeed":    0.0,
                                 "actualSpeed": 0.0,
+                                "actualPercent": 0.0,
                                 "rpmSpeed":    0,
                                 "actualCfm":   0,
                                 "current":     0.0,
@@ -277,11 +284,13 @@ func getDrivesData() []map[string]interface{} {
                                                 }
 
                                                 drivesData[i] = map[string]interface{}{
-                                                        "pod":         driveData["pod"],
-                                                        "fanNumber":   driveData["fanNumber"],
+                                                        "group":       driveData["group"],
+                                                        "fanNumber":   driveData["fanNumber"],  
+                                                        "fanDesc":     driveData["fanDesc"],
                                                         "ip":          driveData["ip"],
                                                         "setSpeed":    setspeed,
                                                         "actualSpeed": actualSpeed,
+                                                        "actualPercent": actualSpeed / 0.6,
                                                         "rpmSpeed":    int(actualSpeed * rpmToHz),
                                                         "actualCfm":   int(math.Round((actualSpeed * rpmToHz) * cfmRpm)),
                                                         "current":     current,
@@ -412,7 +421,7 @@ var (
             Name:     "status",
             Help:     "VFD operational status (1=running, 0=stopped)",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
     vfdspeedhz = prometheus.NewGaugeVec(
@@ -421,7 +430,7 @@ var (
             Name:     "speed_hz",
             Help:     "Current VFD speed in Hertz",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
     vfdspeedrpm = prometheus.NewGaugeVec(
@@ -430,8 +439,17 @@ var (
             Name:     "speed_rpm",
             Help:     "Current VFD speed in RPM",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
+
+    vfdspeedpercent = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Namespace: "vfd",
+            Name:     "speed_percent",
+            Help:     "Current VFD speed in Percent",
+        },
+        []string{"ip", "group", "fan_number"},
+    )    
 
         vfdamperage = prometheus.NewGaugeVec(
         prometheus.GaugeOpts{
@@ -439,7 +457,7 @@ var (
             Name:     "amperage",
             Help:     "Current VFD amperage usage",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
         vfdcfm = prometheus.NewGaugeVec(
@@ -448,7 +466,7 @@ var (
             Name:     "cfm",
             Help:     "Current Fan CFM",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
 )
@@ -458,6 +476,7 @@ func init() {
     prometheus.MustRegister(vfdstatus)
     prometheus.MustRegister(vfdspeedhz)
     prometheus.MustRegister(vfdspeedrpm)
+    prometheus.MustRegister(vfdspeedpercent)
     prometheus.MustRegister(vfdamperage)
     prometheus.MustRegister(vfdcfm)
 }
@@ -490,17 +509,18 @@ func collectMetrics() {
                 log.Printf("Error reading VFD %s status: %v", drive.IP, err)
                 handler.Close()
                 continue
-            
+            }
 
             labels := prometheus.Labels{
                 "ip":         drive.IP,
-                "pod":        fmt.Sprintf("%d", drive.Pod),
+                "group":        fmt.Sprintf("%d", drive.Group),
                 "fan_number": fmt.Sprintf("%d", drive.FanNumber),
             }
 
             vfdstatus.With(labels).Set(float64(status))
             vfdspeedhz.With(labels).Set(actualSpeed)
             vfdspeedrpm.With(labels).Set(actualSpeed * float64(drive.RpmToHz))
+            vfdspeedpercent.With(labels).Set(actualSpeed / 0.6)
             vfdcfm.With(labels).Set(math.Round((actualSpeed * float64(drive.RpmToHz)) * float64(drive.CfmRpm)))
             vfdamperage.With(labels).Set(current)
 
