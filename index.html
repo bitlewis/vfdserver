@@ -7,15 +7,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
-    <title>BLU02 VFD Control</title>
+    <title>BLU01 VFD Control</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7fc;}
         .container { position: relative; width: 100%; }
         .header { position: fixed; top: 0; left: 0; width: 100%; background-color: #f4f7fc; text-align: center; }
         h1 { text-align: center; color: #333; font-size: 42px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
-        .pod { margin-bottom: 10px; }
-        .pod-title-container { display: flex; align-items: center; }
-        .pod-title { width: 80%; cursor: pointer; font-size: 18px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; border-radius: 5px; padding: 10px; }
+        .group { margin-bottom: 10px; }
+        .group-title-container { display: flex; align-items: center; }
+        .group-title { width: 80%; cursor: pointer; font-size: 18px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; border-radius: 5px; padding: 10px; }
         .drive-list { display: none; padding-left: 15px; }
         .drive-item { padding: 5px; background: #fff; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; }
         input[type="checkbox"] { margin-right: 10px; }
@@ -49,13 +49,13 @@
         .vfd-buttons { float: right; }
     </style>
     <script>
-        let expandedPods = JSON.parse(localStorage.getItem("expandedPods")) || {};
-        if (Object.keys(expandedPods).length === 0) {
-            expandedPods = new Proxy({}, { get: () => true }); // Default all PODs to expanded
+        let expandedGroups = JSON.parse(localStorage.getItem("expandedGroups")) || {};
+        if (Object.keys(expandedGroups).length === 0) {
+            expandedGroups = new Proxy({}, { get: () => true }); // Default all GROUPs to expanded
         }
 
         document.addEventListener("DOMContentLoaded", function() {
-            const ws = new WebSocket('ws://10.33.10.53/ws');
+            const ws = new WebSocket('ws://10.32.10.53/ws');
             ws.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 updateUI(data);
@@ -71,50 +71,50 @@
                 currentCheckboxStates[cb.dataset.ip] = cb.checked;
             });
 
-            // Organize drives by POD
-            let pods = {};
+            // Organize drives by GROUP
+            let groups = {};
             data.forEach(drive => {
-                if (!pods[drive.pod]) {
-                    pods[drive.pod] = [];
+                if (!groups[drive.group]) {
+                    groups[drive.group] = [];
                 }
-                pods[drive.pod].push(drive);
+                groups[drive.group].push(drive);
             });
 
             container.innerHTML = '';  // Clear the container to update it
 
-            // Create or update PODs
-            for (let pod in pods) {
-                let podDiv = document.createElement("div");
-                podDiv.className = "pod";
+            // Create or update GROUPs
+            for (let group in groups) {
+                let groupDiv = document.createElement("div");
+                groupDiv.className = "group";
 
-                let podTitleContainer = document.createElement("div");
-                podTitleContainer.style.display = "flex";
-                podTitleContainer.style.alignItems = "center";
+                let groupTitleContainer = document.createElement("div");
+                groupTitleContainer.style.display = "flex";
+                groupTitleContainer.style.alignItems = "center";
 
-                let podTitle = document.createElement("div");
-                podTitle.className = "pod-title";
-                podTitle.style.width = "92%"; // Reduce the width of the POD title
-                podTitle.innerHTML = `POD ${pod}`;
-                podTitle.addEventListener("click", function () {
-                    const list = podDiv.querySelector(".drive-list");
+                let groupTitle = document.createElement("div");
+                groupTitle.className = "group-title";
+                groupTitle.style.width = "92%"; // Reduce the width of the GROUP title
+                groupTitle.innerHTML = `GROUP ${group}`;
+                groupTitle.addEventListener("click", function () {
+                    const list = groupDiv.querySelector(".drive-list");
                     list.style.display = (list.style.display === "block") ? "none" : "block";
-                    expandedPods[pod] = list.style.display === "block";
-                    localStorage.setItem("expandedPods", JSON.stringify(expandedPods));
+                    expandedGroups[group] = list.style.display === "block";
+                    localStorage.setItem("expandedGroups", JSON.stringify(expandedGroups));
                 });
 
                 let selectAllDiv = document.createElement("div");
                 selectAllDiv.style.marginLeft = "10px";
-                let selectAllChecked = pods[pod].every(drive => currentCheckboxStates[drive.ip] === true); // Check if all drives are selected
-                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-pod="${pod}" ${selectAllChecked ? 'checked' : ''}> Select All`;
+                let selectAllChecked = groups[group].every(drive => currentCheckboxStates[drive.ip] === true); // Check if all drives are selected
+                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-group="${group}" ${selectAllChecked ? 'checked' : ''}> Select All`;
 
-                podTitleContainer.appendChild(podTitle);
-                podTitleContainer.appendChild(selectAllDiv);
+                groupTitleContainer.appendChild(groupTitle);
+                groupTitleContainer.appendChild(selectAllDiv);
 
                 let driveList = document.createElement("div");
                 driveList.className = "drive-list";
-                driveList.style.display = expandedPods[pod] ? "block" : "none";
+                driveList.style.display = expandedGroups[group] ? "block" : "none";
 
-                pods[pod].forEach(drive => {
+                groups[group].forEach(drive => {
                     let driveItem = document.createElement("div");
                     driveItem.className = "drive-item";
 
@@ -151,14 +151,15 @@
                         '#007bff';
 
                     driveItem.innerHTML = `
-                        <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-pod="${pod}" ${checked ? 'checked' : ''} ${drive.status === 'Unknown' ? 'disabled' : ''}>
+                        <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-group="${group}" ${checked ? 'checked' : ''} ${drive.status === 'Unknown' ? 'disabled' : ''}>
                         <span>
-                            Fan #${drive.fanNumber} - ${drive.ip} >>
+                            Fan #${drive.fanNumber} - ${drive.fanDesc} - ${drive.ip} >>
                             <span class="status-box grey" style="width: 60px; text-align: center;">${drive.setSpeed} Hz</span>
                             <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualSpeed} Hz</span>
                             <span class="status-box blue" style="width: 80px; text-align: center;">${drive.rpmSpeed} RPM</span>
                             <span class="status-box blue" style="width: 100px; text-align: center;">${drive.actualCfm} CFM</span>
                             <span class="status-box blue" style="width: 50px; text-align: center;">${drive.current} A</span>
+                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualPercent} %</span>
                             <span class="status-box" style="background: ${statusColor}; color: white; text-align: center; padding: 4px; border-radius: 4px;">
                                 ${statusText}${countdown}
                             </span>
@@ -167,16 +168,16 @@
 
                     driveList.appendChild(driveItem);
                 });
-                podDiv.appendChild(podTitleContainer);
-                podDiv.appendChild(driveList);
-                container.appendChild(podDiv);
+                groupDiv.appendChild(groupTitleContainer);
+                groupDiv.appendChild(driveList);
+                container.appendChild(groupDiv);
             }
 
             // Reattach the 'Select All' checkbox functionality
             document.querySelectorAll(".select-all").forEach(checkbox => {
                 checkbox.addEventListener("change", function () {
-                    let pod = this.dataset.pod;
-                    let checkboxes = document.querySelectorAll(`.drive-checkbox[data-pod='${pod}']`);
+                    let group = this.dataset.group;
+                    let checkboxes = document.querySelectorAll(`.drive-checkbox[data-group='${group}']`);
                     checkboxes.forEach(cb => {
                         if (!cb.disabled) {
                             cb.checked = this.checked;
@@ -188,9 +189,9 @@
             // Reattach the checkbox change event for individual drives
             document.querySelectorAll(".drive-checkbox").forEach(checkbox => {
                 checkbox.addEventListener("change", function () {
-                    let pod = this.dataset.pod;
-                    let selectAllCheckbox = document.querySelector(`.select-all[data-pod='${pod}']`);
-                    let allChecked = Array.from(document.querySelectorAll(`.drive-checkbox[data-pod='${pod}']`))
+                    let group = this.dataset.group;
+                    let selectAllCheckbox = document.querySelector(`.select-all[data-group='${group}']`);
+                    let allChecked = Array.from(document.querySelectorAll(`.drive-checkbox[data-group='${group}']`))
                         .every(cb => !cb.disabled && cb.checked);
                     selectAllCheckbox.checked = allChecked;
                 });
@@ -267,27 +268,27 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             const hertzInput = document.getElementById('speed-value');
-            const rpmInput = document.getElementById('rpm-value');
+            const percentInput = document.getElementById('percent-value');
 
             hertzInput.addEventListener('input', function() {
                 const hz = parseFloat(this.value) || 0;
-                rpmInput.value = (hz * 30).toFixed(0);
+                percentInput.value = ((hz / 60) * 100).toFixed(1);
             });
 
-            rpmInput.addEventListener('input', function() {
-                const rpm = parseFloat(this.value) || 0;
-                hertzInput.value = (rpm / 30).toFixed(1);
+            percentInput.addEventListener('input', function() {
+                const percent = parseFloat(this.value) || 0;
+                hertzInput.value = ((percent / 100) * 60).toFixed(1);
             });
 
             setInterval(function() {
                 const hzValue = parseFloat(document.getElementById('speed-value').value);
-                const rpmValue = hzValue * 30;
-                document.getElementById('rpm-value').value = rpmValue.toFixed(0);
+                const percentValue = (hzValue / 60) * 100;
+                document.getElementById('percent-value').value = percentValue.toFixed(1);
             }, 1000);
 
             setInterval(function() {
-                const rpmValue = parseFloat(document.getElementById('rpm-value').value);
-                const hzValue = rpmValue / 30;
+                const percentValue = parseFloat(document.getElementById('percent-value').value);
+                const hzValue = (percentValue / 100) * 60;
                 document.getElementById('speed-value').value = hzValue.toFixed(1);
             }, 1000);
         });
@@ -298,12 +299,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>BLU02 VFD Control Panel</h1>
+            <h1>BLU01 VFD Control Panel</h1>
         </div>
         <div class="control-panel">
             <div class="fan-buttons"><span class="control-button-title">Fan Controls</span><br>
                 <input type="number" id="speed-value" step=".1" placeholder="Speed (Hz)" required> <span class="speed-legend">Hz</span>&nbsp;&nbsp;
-                <input type="number" id="rpm-value" step=".1" placeholder="Speed (RPM)" required> <span class="speed-legend">RPM</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="number" id="percent-value" step=".1" placeholder="Speed (%)" required> <span class="speed-legend">%</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 <button class="set-speed" onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>
                 <button class="freespin" onclick="sendControl('Freespin')">Freespin (Off)</button>
                 <button class="fanhold" onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
