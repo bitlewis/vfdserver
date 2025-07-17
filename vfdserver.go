@@ -490,7 +490,7 @@ func collectMetrics() {
                 log.Printf("Error reading VFD %s status: %v", drive.IP, err)
                 handler.Close()
                 continue
-            }
+            
 
             labels := prometheus.Labels{
                 "ip":         drive.IP,
