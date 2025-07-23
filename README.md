@@ -1,35 +1,43 @@
-# VFD Control Server
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.23.2-blue?logo=go" alt="Go version" />
+  <img src="https://img.shields.io/badge/Platform-Ubuntu%2024.04-orange?logo=ubuntu" alt="Ubuntu" />
+  <img src="https://img.shields.io/badge/Status-Production-green" alt="Production Status" />
+  <img src="https://img.shields.io/badge/License-MIT-brightgreen" alt="License" />
+</p>
 
-A modern, production-ready web-based control and monitoring server for Variable Frequency Drives (VFDs), designed for industrial environments. Built for AAIMDC, supporting OptidriveP2 and OptidriveE3 drives, with real-time control, persistent connections, and a responsive UI.
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/991078/273420123-2e7e7e7e-2e7e-4e7e-8e7e-2e7e7e7e7e7e.png" width="120" alt="VFD Logo" />
+</p>
+
+<p align="center">
+  <b>Modern, real-time web-based control and monitoring for industrial Variable Frequency Drives (VFDs).</b><br>
+  <i>Built for AAIMDC, supporting OptidriveP2 and OptidriveE3 drives.</i>
+</p>
 
 ---
 
-## Features
+## 🚀 Features
 
-- **Persistent VFD Connections:**
-  - Each VFD is managed with a persistent TCP connection for fast, reliable control and status updates.
-  - Automatic reconnection and health monitoring.
-- **WebSocket-Powered UI:**
-  - Real-time updates and control via a modern, mobile-friendly web interface.
-  - No page reloads required; all data is live.
-- **Group and Fan Management:**
-  - Organize VFDs into logical groups (e.g., "pods").
-  - Control individual fans or entire groups with one click.
-- **Drive Profiles:**
-  - Modular support for different drive types via `drive_profiles.json`.
-  - Easily extendable for new drive models.
-- **Prometheus Metrics:**
-  - Exposes `/metrics` endpoint for Prometheus monitoring and alerting.
-- **Control Events Log:**
-  - View recent control actions and their results in the UI.
-- **Dark Mode:**
-  - Toggleable dark/light mode for the web UI.
-- **Supervisord Integration:**
-  - Run the server as a managed service with automatic restarts.
-- **Configurable via JSON:**
-  - All drives and profiles are configured via JSON files in `/etc/vfd`.
-- **Security-Ready:**
-  - Designed to be run behind a reverse proxy for authentication and HTTPS.
+- ⚡ **Persistent VFD Connections**  
+  Each VFD is managed with a persistent TCP connection for fast, reliable control and status updates. Automatic reconnection and health monitoring.
+- 🌐 **WebSocket-Powered UI**  
+  Real-time updates and control via a modern, mobile-friendly web interface. No page reloads required; all data is live.
+- 🌀 **Group and Fan Management**  
+  Organize VFDs into logical groups (e.g., "pods"). Control individual fans or entire groups with one click.
+- 🧩 **Drive Profiles**  
+  Modular support for different drive types via `drive_profiles.json`. Easily extendable for new drive models.
+- 📊 **Prometheus Metrics**  
+  Exposes `/metrics` endpoint for Prometheus monitoring and alerting.
+- 📝 **Control Events Log**  
+  View recent control actions and their results in the UI.
+- 🌙 **Dark Mode**  
+  Toggleable dark/light mode for the web UI.
+- 🔄 **Supervisord Integration**  
+  Run the server as a managed service with automatic restarts.
+- 🛠️ **Configurable via JSON**  
+  All drives and profiles are configured via JSON files in `/etc/vfd`.
+- 🛡️ **Security-Ready**  
+  Designed to be run behind a reverse proxy for authentication and HTTPS.
 
 ---
 
@@ -148,6 +156,98 @@ Defines register mappings and control logic for each supported drive type.
   - Toggle with the button in the top right
 - **Responsive:**
   - Works on desktop and mobile
+
+---
+
+## 🌍 Remote Control API
+
+Remotely control the VFD server by sending JSON commands to its HTTP endpoints. All endpoints are accessible on `http://<BindIP>:80` (as set in your config).
+
+### `/control` (POST)
+
+Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:
+
+**Payload:**
+```json
+{
+  "drives": ["10.33.30.11", "10.33.30.12"],
+  "action": "SetSpeed", // One of: "Start", "Stop", "Fanhold", "Freespin", "SetSpeed"
+  "speed": 45.0          // (Hz) Only required for SetSpeed
+}
+```
+- `drives`: List of VFD IPs to control
+- `action`: Control action (see below)
+- `speed`: (Optional) Frequency in Hz for `SetSpeed`
+
+**Actions:**
+- `Start`: Start the selected drives
+- `Stop`: Stop the selected drives
+- `Fanhold`: Set speed to 0 Hz but keep drive enabled
+- `Freespin`: Alias for Stop (let fan coast)
+- `SetSpeed`: Set the speed (Hz) and start the drive
+
+**Example (curl):**
+```bash
+curl -X POST http://10.33.10.53/control \
+  -H 'Content-Type: application/json' \
+  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'
+```
+
+**Response:**
+- `200 OK` with message `Control action processed successfully` or error details
+
+### `/control-events` (GET)
+
+Fetch a list of recent control events (for audit/logging).
+
+**Example:**
+```bash
+curl http://10.33.10.53/control-events
+```
+
+**Response:**
+```json
+[
+  {
+    "timestamp": "2024-06-10T12:34:56Z",
+    "action": "SetSpeed",
+    "speed": 45.0,
+    "drives": [
+      { "ip": "10.33.30.11", "success": true },
+      { "ip": "10.33.30.12", "success": false, "error": "Tripped" }
+    ]
+  }
+]
+```
+
+### `/app-config` (GET)
+
+Fetch the current app/site configuration (site name, group label, etc).
+
+**Example:**
+```bash
+curl http://10.33.10.53/app-config
+```
+
+### `/vfdconnect` (POST)
+
+(Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive.
+
+**Payload:**
+```json
+{ "ip": "10.33.30.11" }
+```
+
+**Example:**
+```bash
+curl -X POST http://10.33.10.53/vfdconnect \
+  -H 'Content-Type: application/json' \
+  -d '{"ip": "10.33.30.11"}'
+```
+
+### `/ws` (WebSocket)
+
+Live updates for all VFDs. Used by the web UI, but can be consumed by custom dashboards.
 
 ---
 
@@ -281,7 +381,7 @@ sudo supervisorctl start vfdserver
 
 ## License
 
-MIT (or your preferred license)
+MIT
 
 ---
 
