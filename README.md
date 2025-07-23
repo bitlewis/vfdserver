@@ -43,6 +43,8 @@ A modern, production-ready web-based control and monitoring server for Variable 
 **Production config location:**
 - `/etc/vfd/config.json`
 - `/etc/vfd/drive_profiles.json`
+- `/etc/vfd/index.html`
+- `/usr/bin/vfdserver`
 
 ---
 
