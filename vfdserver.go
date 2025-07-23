@@ -1,33 +1,68 @@
+// VFD Control Server v3.1 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
+// Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
+// Modular VFD control and status functions based on drive profiles.
+// Much more, including major UI revamp and improvements.
+
+// =====================
+// Imports
+// =====================
 package main
 
 import (
-        "encoding/json"
-        "fmt"
-        "log"
-        "net/http"
-        "os"
-        "time"
-        "sync"
-        "math"
-        "github.com/grid-x/modbus"
-        "github.com/gorilla/websocket"
-        "github.com/prometheus/client_golang/prometheus"
-        "github.com/prometheus/client_golang/prometheus/promhttp"
+    "encoding/json"
+    "fmt"
+    "log"
+    "net/http"
+    "os"
+    "context"
+    "time"
+    "sync"
+    "math"
+    "github.com/grid-x/modbus"
+    "github.com/gorilla/websocket"
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// =====================
+// Type Definitions
+// =====================
+
+type AppConfig struct {
+    SiteName   string        `json:"SiteName"`
+    BindIP     string        `json:"BindIP"`
+    GroupLabel string        `json:"GroupLabel"`
+    VFDs       []DriveConfig `json:"VFDs"`
+}
+
 type DriveConfig struct {
-        IP           string `json:"IP"`
-        Port         int    `json:"Port"`
-        Unit         int    `json:"Unit"`
-        DefaultSpeed int    `json:"DefaultSpeed"`
-        Pod          int    `json:"Pod"`
-        FanNumber    int    `json:"FanNumber"`
-        RpmToHz      int    `json:"RpmHz"`
-        CfmRpm       float64    `json:"CfmRpm"`
-        LastPull     int64  `json:"-"`
+    IP           string  `json:"IP"`
+    Port         int     `json:"Port"`
+    Unit         int     `json:"Unit"`
+    DefaultSpeed int     `json:"DefaultSpeed"`
+    Group        int     `json:"Group"`
+    FanNumber    int     `json:"FanNumber"`
+    FanDesc      string  `json:"FanDesc"`
+    RpmToHz      float64 `json:"RpmHz"`
+    CfmRpm       float64 `json:"CfmRpm"`
+    DriveType    string  `json:"DriveType"`
+    LastPull     int64   `json:"-"`
 }
 
 type VFDConfig map[string][]DriveConfig
+
+type VFDConnection struct {
+    handler *modbus.TCPClientHandler
+    client  modbus.Client
+    mu      sync.Mutex
+    ip      string
+    port    int
+    unit    byte
+    healthy bool
+    retryCount int
+    lastFail time.Time
+}
 
 type ControlEvent struct {
     Timestamp time.Time `json:"timestamp"`
@@ -42,128 +77,530 @@ type DriveEventInfo struct {
     Error   string `json:"error,omitempty"`
 }
 
-var controlEvents []ControlEvent
-
-var vfdConfig VFDConfig
 var upgrader = websocket.Upgrader{
-        CheckOrigin: func(r *http.Request) bool {
-                return true
-        },
+    CheckOrigin: func(r *http.Request) bool {
+        return true
+    },
 }
 
-func main() {
-        var err error
-        vfdConfig, err = loadConfig("/etc/vfd/config.json")
-        if err != nil {
-                log.Fatal(err)
-        }
-
-        go updateMetrics()
-
-        http.HandleFunc("/", handleLivePage)
-        http.HandleFunc("/ws", handleWebSocket)
-        http.HandleFunc("/control", handleControl)
-        http.HandleFunc("/control-events", handleControlEvents)
-        http.Handle("/metrics", promhttp.Handler())
-
-        log.Println("VFD Control Server v2.1 by Louis Valois - for AAIMDC BLU02 Site\nWeb server started on http://10.33.10.53")
-        log.Fatal(http.ListenAndServe("10.33.10.53:80", nil))
+// DriveTypeProfile holds register settings for each drive type
+type DriveTypeProfile struct {
+    Setpoint        []int          `json:"Setpoint"`
+    Control         int            `json:"Control"`
+    SpeedPresetMultiplier int      `json:"SpeedPresetMultiplier"`
+    OutputFrequency int            `json:"OutputFrequency"`
+    OutputCurrent   int            `json:"OutputCurrent"`
+    Status          int            `json:"Status"`
+    StatusBits      map[string]int `json:"StatusBits"`
+    StartValue      int            `json:"StartValue"`
+    StopValue       int            `json:"StopValue"`
+    UnTripRegister  int            `json:"UnTripRegister"`
+    UnTripValue     int            `json:"UnTripValue"`
 }
 
-func loadConfig(filename string) (VFDConfig, error) {
-        file, err := os.Open(filename)
-        if err != nil {
-                return nil, fmt.Errorf("could not open config file: %w", err)
+// =====================
+// Global Variables
+// =====================
+var appConfig AppConfig
+var vfdConfig [][]DriveConfig
+var vfdData      []map[string]interface{}
+var vfdDataMutex sync.RWMutex
+var vfdConnections map[string]*VFDConnection
+var vfdConnectionsMu sync.RWMutex
+var controlEvents []ControlEvent
+var driveTypeProfiles map[string]DriveTypeProfile
+var disabledDrives = make(map[string]bool)
+
+// =====================
+// Utility/Helper Functions
+// =====================
+func boolToFloat(b bool) float64 {
+    if b {
+        return 1
+    }
+    return 0
+}
+
+func safeFloat(v interface{}) float64 {
+    if f, ok := v.(float64); ok {
+        return f
+    }
+    return 0.0
+}
+
+func safeInt(v interface{}) int {
+    if i, ok := v.(int); ok {
+        return i
+    }
+    if f, ok := v.(float64); ok {
+        return int(f)
+    }
+    return 0
+}
+
+// Helper to find drive type for a given IP
+func findDriveType(ip string) (string, bool) {
+    for _, drives := range vfdConfig {
+        for _, d := range drives {
+            if d.IP == ip {
+                return d.DriveType, true
+            }
         }
+    }
+    return "", false
+}
+
+// Update statusToString to accept statusBits
+func statusToString(status int, statusBits map[string]int) string {
+    driveEnabled := (status & (1 << statusBits["Enabled"])) != 0
+    driveTripped := (status & (1 << statusBits["Tripped"])) != 0
+    driveInhibited := false
+    if bit, ok := statusBits["Inhibited"]; ok {
+        driveInhibited = (status & (1 << bit)) != 0
+    }
+    if driveEnabled {
+        return "Running"
+    }
+    if driveTripped {
+        return "Tripped"
+    }
+    if driveInhibited {
+        return "NotReady"
+    }
+    if !driveEnabled {
+        return "Stopped"
+    }
+    return "Unknown"
+}
+
+// =====================
+// Drive Profile & Connection Management
+// =====================
+func loadDriveTypeProfiles(path string) error {
+    file, err := os.Open(path)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+    decoder := json.NewDecoder(file)
+    return decoder.Decode(&driveTypeProfiles)
+}
+
+func saveDisabledDrives() {
+    file, err := os.Create("/etc/vfd/disabled_drives.json")
+    if err == nil {
         defer file.Close()
+        encoder := json.NewEncoder(file)
+        encoder.Encode(disabledDrives)
+    }
+}
 
-        var config VFDConfig
+func loadDisabledDrives() {
+    file, err := os.Open("/etc/vfd/disabled_drives.json")
+    if err == nil {
+        defer file.Close()
         decoder := json.NewDecoder(file)
-        err = decoder.Decode(&config)
-        if err != nil {
-                return nil, fmt.Errorf("could not parse config file: %w", err)
-        }
+        decoder.Decode(&disabledDrives)
+    }
+}
 
-        // Set LastPull to the current time for all drives
-        for key, drives := range config {
-                for i, drive := range drives {
-                        drive.LastPull = time.Now().Unix()
-                        config[key][i] = drive
+func manageVFDConnection(vfd *DriveConfig) {
+    ip := vfd.IP
+    port := vfd.Port
+    unit := byte(vfd.Unit)
+    var conn *VFDConnection
+    var err error
+
+    for {
+        var lastErr error
+        for i := 0; i < 3; i++ {
+            conn, err = connectVFD(ip, port, unit)
+            if err == nil {
+                vfdConnectionsMu.Lock()
+                vfdConnections[ip] = conn
+                vfdConnectionsMu.Unlock()
+                goto Connected
+            }
+            lastErr = err
+            log.Printf("Initial connection to %s has failed: %v. Retrying in 5s...", ip, err)
+            time.Sleep(5 * time.Second)
+        }
+        log.Printf("Failed to connect to %s after 3 attempts. Last error: %v. Backing off for 15 minutes.", ip, lastErr)
+        time.Sleep(15 * time.Minute)
+    }
+    Connected:
+    for {
+        // Monitor connection health, e.g., by periodic ping/read
+        time.Sleep(5 * time.Second)
+        vfdConnectionsMu.RLock()
+        conn, ok := vfdConnections[ip]
+        vfdConnectionsMu.RUnlock()
+        if !ok {
+            log.Printf("Connection for %s not found, skipping health check.", ip)
+            continue
+        }
+        conn.mu.Lock()
+        _, err := conn.client.ReadInputRegisters(context.Background(), 0, 1)
+        conn.mu.Unlock()
+        if err != nil {
+            log.Printf("Lost connection to %s: %v", ip, err)
+            conn.healthy = false
+            // Retry logic
+            for i := 0; i < 3; i++ {
+                time.Sleep(2 * time.Second)
+                newConn, err := connectVFD(ip, port, unit)
+                if err == nil {
+                    vfdConnectionsMu.Lock()
+                    vfdConnections[ip] = newConn
+                    vfdConnectionsMu.Unlock()
+                    log.Printf("Reconnected to %s", ip)
+                    break
                 }
+                log.Printf("Reconnect attempt %d to %s failed: %v", i+1, ip, err)
+            }
+            if !conn.healthy {
+                log.Printf("Failed to reconnect to %s after 3 attempts. Backing off for 10 minutes.", ip)
+                time.Sleep(10 * time.Minute)
+            }
         }
-
-        return config, nil
+    }
 }
 
-func setupModbusClient(ip string, port int) (modbus.Client, *modbus.TCPClientHandler, error) {
-        handler := modbus.NewTCPClientHandler(fmt.Sprintf("%s:%d", ip, port))
-        handler.Timeout = 1 * time.Second
-        handler.SlaveID = 1
-        err := handler.Connect()
+func connectVFD(ip string, port int, unit byte) (*VFDConnection, error) {
+    handler := modbus.NewTCPClientHandler(fmt.Sprintf("%s:%d", ip, port))
+    handler.Timeout = 2 * time.Second
+    handler.SlaveID = unit
+    err := handler.Connect(context.Background())
+    if err != nil {
+        return nil, err
+    }
+    client := modbus.NewClient(handler)
+
+    // Try to read a known register to verify the drive is present
+    _, err = client.ReadInputRegisters(context.Background(), 0, 1) // e.g., status register
+    if err != nil {
+        handler.Close()
+        return nil, fmt.Errorf("Connected by MODBUS probe failed: %w", err)
+    }
+
+    return &VFDConnection{
+        handler: handler,
+        client:  client,
+        ip:      ip,
+        port:    port,
+        unit:    unit,
+        healthy: true,
+    }, nil
+}
+
+// =====================
+// Polling & Data Collection
+// =====================
+func initializeVfdData() {
+    vfdDataMutex.Lock()
+    defer vfdDataMutex.Unlock()
+
+    vfdData = make([]map[string]interface{}, 0, len(vfdConfig)*5)
+    for _, drives := range vfdConfig {
+        for _, d := range drives {
+            vfdData = append(vfdData, map[string]interface{}{
+                "group":         d.Group,
+                "fanNumber":     d.FanNumber,
+                "fanDesc":       d.FanDesc,
+                "ip":            d.IP,
+                "rpmToHz":       d.RpmToHz,
+                "cfmRpm":        d.CfmRpm,
+                "setSpeed":      0.0,
+                "actualSpeed":   0.0,
+                "actualPercent": 0.0,
+                "rpmSpeed":      0,
+                "actualCfm":     0,
+                "current":       0.0,
+                "status":        "Waiting",
+                "lastUpdated":   time.Now().Unix(),
+            })
+        }
+    }
+}
+
+func pollAllDrives() {
+    sem := make(chan struct{}, 10) // max 10 concurrent polls
+    var wg sync.WaitGroup
+    mu := sync.Mutex{}
+
+    vfdDataMutex.Lock()
+    currentData := vfdData // snapshot current data to preserve
+    vfdDataMutex.Unlock()
+
+    ipIndex := make(map[string]int)
+    for i, d := range currentData {
+        ipIndex[d["ip"].(string)] = i
+    }
+
+    newData := make([]map[string]interface{}, len(currentData))
+    for i, d := range currentData {
+        newMap := make(map[string]interface{}, len(d))
+        for k, v := range d {
+            newMap[k] = v
+        }
+        newData[i] = newMap
+    }
+
+    for _, drives := range vfdConfig {
+        for _, d := range drives {
+            if disabledDrives[d.IP] {
+                // Mark as disabled in newData
+                mu.Lock()
+                if idx, ok := ipIndex[d.IP]; ok {
+                    updated := newData[idx]
+                    updated["status"] = "Disabled"
+                    updated["actualSpeed"] = 0.0
+                    updated["actualPercent"] = 0.0
+                    updated["rpmSpeed"] = 0
+                    updated["actualCfm"] = 0
+                    updated["current"] = 0.0
+                    updated["setSpeed"] = 0.0
+                    updated["lastUpdated"] = time.Now().Unix()
+                }
+                mu.Unlock()
+                continue
+            }
+            vfdConnectionsMu.RLock()
+            conn, ok := vfdConnections[d.IP]
+            healthy := ok && conn.healthy
+            vfdConnectionsMu.RUnlock()
+            if !healthy {
+                // Mark as offline in newData
+                mu.Lock()
+                if idx, ok := ipIndex[d.IP]; ok {
+                    updated := newData[idx]
+                    updated["status"] = "Unavailable"
+                    updated["actualSpeed"] = 0.0
+                    updated["actualPercent"] = 0.0
+                    updated["rpmSpeed"] = 0
+                    updated["actualCfm"] = 0
+                    updated["current"] = 0.0
+                    updated["setSpeed"] = 0.0
+                    updated["lastUpdated"] = time.Now().Unix()
+                }
+                mu.Unlock()
+                continue
+            }
+            wg.Add(1)
+            go func(d DriveConfig) {
+                defer wg.Done()
+                sem <- struct{}{}
+                defer func() { <-sem }()
+                ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+                defer cancel()
+                data, err := pollDrive(ctx, d)
+                if err != nil {
+                    fmt.Printf("Drive %s Polling failed: %v\n", d.IP, err)
+                    return
+                }
+                mu.Lock()
+                if idx, ok := ipIndex[d.IP]; ok {
+                    updated := newData[idx]
+                    for k, v := range data {
+                        updated[k] = v
+                    }
+                    updated["lastUpdated"] = time.Now().Unix()
+                }
+                mu.Unlock()
+            }(d)
+        }
+    }
+    wg.Wait()
+    vfdDataMutex.Lock()
+    vfdData = newData
+    vfdDataMutex.Unlock()
+}
+
+func pollDrive(ctx context.Context, d DriveConfig) (map[string]interface{}, error) {
+    vfdConnectionsMu.RLock()
+    conn, ok := vfdConnections[d.IP]
+    vfdConnectionsMu.RUnlock()
+    if !ok || !conn.healthy {
+        return nil, fmt.Errorf("No available connection for  %s", d.IP)
+    }
+
+    // Look up drive profile
+    profile, ok := driveTypeProfiles[d.DriveType]
+    if !ok {
+        return nil, fmt.Errorf("unknown drive type profile: %s", d.DriveType)
+    }
+
+    conn.mu.Lock()
+    defer conn.mu.Unlock()
+
+    // Use the persistent client for Modbus read
+    result, err := conn.client.ReadInputRegisters(ctx, 0, 9)
+    if err != nil || len(result) < 18 {
+        conn.healthy = false // Mark as unhealthy, will be retried by manager
+        return nil, fmt.Errorf("read error: %w", err)
+    }
+
+    // Use profile.Status for status register
+    status := int(result[(profile.Status-1)*2])<<8 | int(result[(profile.Status-1)*2+1])
+    setSpeed := float64(int(result[(profile.Setpoint[0])*2])<<8 | int(result[(profile.Setpoint[0])*2+1])) / 10.0
+    actualSpeed := float64(int(result[(profile.OutputFrequency-1)*2])<<8 | int(result[(profile.OutputFrequency-1)*2+1])) / 10.0
+    current := float64(int(result[(profile.OutputCurrent-1)*2])<<8 | int(result[(profile.OutputCurrent-1)*2+1])) / 10.0
+    rpm := int(actualSpeed * d.RpmToHz)
+    cfm := int(math.Round(float64(rpm) * d.CfmRpm))
+
+    return map[string]interface{}{
+        "setSpeed":      setSpeed,
+        "actualSpeed":   actualSpeed,
+        "actualPercent": math.Round((actualSpeed/0.6)*10) / 10,
+        "rpmSpeed":      rpm,
+        "actualCfm":     cfm,
+        "current":       current,
+        "status":        statusToString(status, profile.StatusBits),
+    }, nil
+}
+
+// =====================
+// Modbus Command Functions
+// =====================
+func fanStop(ip string) error {
+    vfdConnectionsMu.RLock()
+    conn, ok := vfdConnections[ip]
+    vfdConnectionsMu.RUnlock()
+    if !ok || !conn.healthy {
+        return fmt.Errorf("No available connection for  %s", ip)
+    }
+    driveType, ok := findDriveType(ip)
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    profile, ok := driveTypeProfiles[driveType]
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    conn.mu.Lock()
+    defer conn.mu.Unlock()
+    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StopValue))
+    return err
+}
+
+func fanUnTrip(ip string) error {
+    vfdConnectionsMu.RLock()
+    conn, ok := vfdConnections[ip]
+    vfdConnectionsMu.RUnlock()
+    if !ok || !conn.healthy {
+        return fmt.Errorf("No available connection for  %s", ip)
+    }
+    driveType, ok := findDriveType(ip)
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    profile, ok := driveTypeProfiles[driveType]
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    conn.mu.Lock()
+    defer conn.mu.Unlock()
+    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.UnTripRegister), uint16(profile.UnTripValue))
+    return err
+}
+
+func fanStart(ip string) error {
+    vfdConnectionsMu.RLock()
+    conn, ok := vfdConnections[ip]
+    vfdConnectionsMu.RUnlock()
+    if !ok || !conn.healthy {
+        return fmt.Errorf("No available connection for  %s", ip)
+    }
+    driveType, ok := findDriveType(ip)
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    profile, ok := driveTypeProfiles[driveType]
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    conn.mu.Lock()
+    defer conn.mu.Unlock()
+    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StartValue))
+    return err
+}
+
+func setFanSpeed(ip string, setspeed float64) error {
+    vfdConnectionsMu.RLock()
+    conn, ok := vfdConnections[ip]
+    vfdConnectionsMu.RUnlock()
+    if !ok || !conn.healthy {
+        return fmt.Errorf("No available connection for  %s", ip)
+    }
+    driveType, ok := findDriveType(ip)
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    profile, ok := driveTypeProfiles[driveType]
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    conn.mu.Lock()
+    defer conn.mu.Unlock()
+    actualSpeedSet := int(setspeed * 10)
+    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StartValue))
+    if err != nil {
+        return err
+    }
+    if len(profile.Setpoint) > 0 {
+        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), uint16(actualSpeedSet))
         if err != nil {
-                return nil, nil, fmt.Errorf("failed to connect to Modbus server %s: %v", ip, err)
+            return err
         }
-        client := modbus.NewClient(handler)
-        return client, handler, nil
-}
-
-func getDriveStatus(client modbus.Client) (int, float64, float64, float64, error) {
-        result, err := client.ReadInputRegisters(0, 9)
+    }
+    if len(profile.Setpoint) > 1 {
+        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[1]), uint16(actualSpeedSet*profile.SpeedPresetMultiplier))
         if err != nil {
-                return 0, 0, 0, 0, fmt.Errorf("failed to read status and speed: %v", err)
+            return err
         }
-        if len(result) < 18 {
-                return 0, 0, 0, 0, fmt.Errorf("invalid response length")
+    }
+    return nil
+}
+
+func fanHold(ip string) error {
+    vfdConnectionsMu.RLock()
+    conn, ok := vfdConnections[ip]
+    vfdConnectionsMu.RUnlock()
+    if !ok || !conn.healthy {
+        return fmt.Errorf("No available connection for  %s", ip)
+    }
+    driveType, ok := findDriveType(ip)
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    profile, ok := driveTypeProfiles[driveType]
+    if !ok {
+        return fmt.Errorf("No drive profile for %s", ip)
+    }
+    conn.mu.Lock()
+    defer conn.mu.Unlock()
+    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StartValue))
+    if err != nil {
+        return err
+    }
+    if len(profile.Setpoint) > 0 {
+        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), 0)
+        if err != nil {
+            return err
         }
-
-        status := int(result[0])<<8 | int(result[1])
-        setspeed := float64(int(result[2])<<8 | int(result[3])) / 10.0
-        actualSpeed := float64(int(result[12])<<8 | int(result[13])) / 10.0
-        current := float64(int(result[14])<<8|int(result[15])) / 10.0
-
-        return status, setspeed, actualSpeed, current, nil
-}
-
-func statusToString(status int) string {
-        switch status {
-        case 1:
-                return "Running"
-        case 0:
-                return "Stopped"
-        default:
-                return "Unknown"
+    }
+    if len(profile.Setpoint) > 1 {
+        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[1]), 0)
+        if err != nil {
+            return err
         }
+    }
+    return nil
 }
 
-func fanStop(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 0)
-        return err
-}
-
-func fanStart(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 1)
-        return err
-}
-
-func freeSpin(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 0)
-        _, err = client.WriteSingleRegister(1, 0)
-        return err
-}
-
-func setFanSpeed(client modbus.Client, setspeed float64) error {
-        actualSpeedSet := int(setspeed * 10)
-        _, err := client.WriteSingleRegister(0, 1)
-        _, err = client.WriteSingleRegister(1, uint16(actualSpeedSet))
-        return err
-}
-
-func fanHold(client modbus.Client) error {
-        _, err := client.WriteSingleRegister(0, 1)
-        _, err = client.WriteSingleRegister(1, 0)
-        return err
-}
-
+// =====================
+// HTTP/WebSocket Handlers
+// =====================
 func handleLivePage(w http.ResponseWriter, r *http.Request) {
         http.ServeFile(w, r, "/etc/vfd/index.html")
 }
@@ -176,134 +613,35 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
     }
     defer conn.Close()
 
-    // Send initial data with Unknown status
-    initialData := []map[string]interface{}{}
-    for _, drives := range vfdConfig {
-        for _, drive := range drives {
-            initialData = append(initialData, map[string]interface{}{
-                "pod":         drive.Pod,
-                "fanNumber":   drive.FanNumber,
-                "ip":          drive.IP,
-                "setSpeed":    0.0,
-                "actualSpeed": 0.0,
-                "rpmSpeed":    0,
-                "current":     0.0,
-                "status":      "Waiting",
-                "lastUpdated": time.Now().Unix(),
-            })
-        }
-    }
+    // Send initial data immediately
+    vfdDataMutex.RLock()
+    initialData := make([]map[string]interface{}, len(vfdData))
+    copy(initialData, vfdData)
+    vfdDataMutex.RUnlock()
 
-    // Send initial state immediately
     if err := conn.WriteJSON(initialData); err != nil {
         log.Println(err)
         return
     }
 
-    // Start background updates
-    go func() {
-        for {
-            data := getDrivesData()
+    // Then send updated data every second
+    ticker := time.NewTicker(1 * time.Second)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            vfdDataMutex.RLock()
+            data := make([]map[string]interface{}, len(vfdData))
+            copy(data, vfdData)
+            vfdDataMutex.RUnlock()
+
             if err := conn.WriteJSON(data); err != nil {
-                log.Println(err)
+                log.Println("WebSocket write error:", err)
                 return
             }
-            time.Sleep(1 * time.Second)
-        }
-    }()
-
-    // Keep the connection open
-    for {
-        _, _, err := conn.ReadMessage()
-        if err != nil {
-            log.Println(err)
-            return
         }
     }
-}
-
-func getDrivesData() []map[string]interface{} {
-        var drivesData []map[string]interface{}
-
-        // Initialize drivesData with all drives from the configuration file
-        for _, drives := range vfdConfig {
-                for _, drive := range drives {
-                        drivesData = append(drivesData, map[string]interface{}{
-                                "pod":         drive.Pod,
-                                "fanNumber":   drive.FanNumber,
-                                "ip":          drive.IP,
-                                "rpmToHz":     float64(drive.RpmToHz),
-                                "cfmRpm":      float64(drive.CfmRpm),
-                                "setSpeed":    0.0,
-                                "actualSpeed": 0.0,
-                                "rpmSpeed":    0,
-                                "actualCfm":   0,
-                                "current":     0.0,
-                                "status":      "Unknown",
-                                "lastUpdated": drive.LastPull, // Initialize with the last successful pull timestamp
-                        })
-                }
-        }
-
-        // Update data points for each drive in parallel
-        var wg sync.WaitGroup
-        for i, driveData := range drivesData {
-                wg.Add(1)
-                go func(i int, driveData map[string]interface{}) {
-                        defer wg.Done()
-                        ip := driveData["ip"].(string)
-                        for _, drives := range vfdConfig {
-                                for _, drive := range drives {
-                                        if drive.IP == ip {
-                                                client, handler, err := setupModbusClient(drive.IP, drive.Port)
-                                                if err != nil {
-                                                        log.Println(err)
-                                                        return
-                                                }
-                                                defer handler.Close()
-
-                                                status, setspeed, actualSpeed, current, err := getDriveStatus(client)
-                                                if err != nil {
-                                                        log.Println(err)
-                                                        return
-                                                }
-
-                                                rpmToHz, ok1 := driveData["rpmToHz"].(float64)
-                                                cfmRpm, ok2 := driveData["cfmRpm"].(float64)
-
-                                                if !ok1 || !ok2 {
-                                                    log.Printf("Type assertion failed for rpmToHz or cfmRpm on IP %v", driveData["ip"])
-                                                    return
-                                                }
-
-                                                drivesData[i] = map[string]interface{}{
-                                                        "pod":         driveData["pod"],
-                                                        "fanNumber":   driveData["fanNumber"],
-                                                        "ip":          driveData["ip"],
-                                                        "setSpeed":    setspeed,
-                                                        "actualSpeed": actualSpeed,
-                                                        "rpmSpeed":    int(actualSpeed * rpmToHz),
-                                                        "actualCfm":   int(math.Round((actualSpeed * rpmToHz) * cfmRpm)),
-                                                        "current":     current,
-                                                        "status":      statusToString(status),
-                                                        "lastUpdated": time.Now().Unix(), // Update the lastUpdated field only on successful Modbus poll
-                                                }
-
-                                                // Update the LastPull field in the DriveConfig struct
-                                                for j, d := range drives {
-                                                        if d.IP == ip {
-                                                                drives[j].LastPull = time.Now().Unix()
-                                                        }
-                                                }
-                                        }
-                                }
-                        }
-                }(i, driveData)
-        }
-
-        wg.Wait()
-
-        return drivesData
 }
 
 func handleControlEvents(w http.ResponseWriter, r *http.Request) {
@@ -328,7 +666,7 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
         var controlData struct {
                 Drives []string `json:"drives"`
                 Action string   `json:"action"`
-                Speed  float64  `json:"speed"`
+                Speed  float64  `json:"speed"`  
         }
         err := json.NewDecoder(r.Body).Decode(&controlData)
         if err != nil {
@@ -337,7 +675,7 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
         }
 
         // Validate action
-        if controlData.Action != "Freespin" && controlData.Action != "Fanhold" && controlData.Action != "SetSpeed" && controlData.Action != "Restart" && controlData.Action != "Stop" {
+        if controlData.Action != "Freespin" && controlData.Action != "Fanhold" && controlData.Action != "SetSpeed" && controlData.Action != "Start" && controlData.Action != "Stop" {
                 http.Error(w, "Invalid action", http.StatusBadRequest)
                 return
         }
@@ -351,32 +689,73 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
         Drives:    make([]DriveEventInfo, 0),
     }
 
+    var wg sync.WaitGroup
+    var mu sync.Mutex
+    
     for _, ip := range controlData.Drives {
-        driveInfo := DriveEventInfo{IP: ip, Success: true}
+        wg.Add(1)
+        go func(ip string) {
+            defer wg.Done()
+            driveInfo := DriveEventInfo{IP: ip, Success: true}
+            var err error
 
-        // Find drive config and execute control
-        for _, drives := range vfdConfig {
-            for _, drive := range drives {
-                if drive.IP == ip {
-                    client, handler, err := setupModbusClient(drive.IP, drive.Port)
-                    if err != nil {
-                        driveInfo.Success = false
-                        driveInfo.Error = fmt.Sprintf("Connection failed: %v", err)
-                        continue
-                    }
-                    defer handler.Close()
-
-                    // Execute control action and record result
-                    if err := executeControl(client, controlData.Action, controlData.Speed); err != nil {
-                        driveInfo.Success = false
-                        driveInfo.Error = err.Error()
-                    }
-
-                    event.Drives = append(event.Drives, driveInfo)
+            // Check drive status in vfdData
+            vfdDataMutex.RLock()
+            var driveStatus string
+            for _, entry := range vfdData {
+                if entry["ip"] == ip {
+                    driveStatus, _ = entry["status"].(string)
+                    break
                 }
             }
-        }
+            vfdDataMutex.RUnlock()
+
+            if driveStatus == "Unavailable" || driveStatus == "NotReady" {
+                driveInfo.Success = false
+                driveInfo.Error = fmt.Sprintf("%s", driveStatus)
+                log.Printf("[CONTROL BLOCKED] IP: %s, Action: %s, State: %s", ip, controlData.Action, driveStatus)
+            } else {
+                switch controlData.Action {
+                case "Start":
+                    if driveStatus == "Tripped" {
+                        err = fanUnTrip(ip)
+                        if err == nil {
+                            err = fanStart(ip)
+                        }
+                    } else {
+                        err = fanStart(ip)
+                    }
+                case "Stop":
+                    err = fanStop(ip)
+                case "Fanhold":
+                    err = fanHold(ip)
+                case "Freespin":
+                    err = fanStop(ip)
+                case "SetSpeed":
+                    if driveStatus == "Tripped" {
+                        err = fanUnTrip(ip)
+                        if err == nil {
+                            err = fanStart(ip)
+                        }
+                    } else {
+                        err = fanStart(ip)
+                    }
+                    if err == nil {
+                        err = setFanSpeed(ip, controlData.Speed)
+                    }
+                }
+                if err != nil {
+                    driveInfo.Success = false
+                    driveInfo.Error = err.Error()
+                    log.Printf("[MODBUS ERROR] IP: %s, Action: %s, Error: %s", ip, controlData.Action, err.Error())
+                }
+            }
+            mu.Lock()
+            event.Drives = append(event.Drives, driveInfo)
+            mu.Unlock()
+        }(ip)
     }
+    wg.Wait()
 
     // Log the event
     controlEvents = append(controlEvents, event)
@@ -385,25 +764,60 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
     }
 
     w.Write([]byte("Control action processed successfully"))
+    go pollAllDrives()
 }
 
-func executeControl(client modbus.Client, action string, speed float64) error {
-    switch action {
-    case "Restart":
-        return fanStart(client)
-    case "Stop":
-        return fanStop(client)
-    case "Fanhold":
-        return fanHold(client)
-    case "Freespin":
-        return freeSpin(client)
-    case "SetSpeed":
-        return setFanSpeed(client, speed)
-    default:
-        return fmt.Errorf("invalid action: %s", action)
+
+func handleAppConfig(w http.ResponseWriter, r *http.Request) {
+    json.NewEncoder(w).Encode(map[string]string{
+        "siteName":   appConfig.SiteName,
+        "groupLabel": appConfig.GroupLabel,
+        "bindIP": appConfig.BindIP,
+    })
+}
+
+// HTTP handler to toggle a drive's enabled/disabled state by IP
+func handleVFDConnect(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+    var req struct {
+        IP string `json:"ip"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Failed to parse request body: "+err.Error(), http.StatusBadRequest)
+        return
+    }
+    var action string
+    if disabledDrives[req.IP] {
+        delete(disabledDrives, req.IP)
+        action = "ConnectVFD"
+        go pollAllDrives()
+        w.Write([]byte("Drive enabled"))
+    } else {
+        disabledDrives[req.IP] = true
+        action = "DisconnectVFD"
+        go pollAllDrives()
+        w.Write([]byte("Drive disabled"))
+    }
+    
+    saveDisabledDrives()
+
+    event := ControlEvent{
+        Timestamp: time.Now(),
+        Action:    action,
+        Drives:    []DriveEventInfo{{IP: req.IP, Success: true}},
+    }
+    controlEvents = append(controlEvents, event)
+    if len(controlEvents) > 100 {
+        controlEvents = controlEvents[1:]
     }
 }
 
+// =====================
+// Prometheus Metrics
+// =====================
 var (
     // Define metrics with VFD namespace
     vfdstatus = prometheus.NewGaugeVec(
@@ -412,7 +826,7 @@ var (
             Name:     "status",
             Help:     "VFD operational status (1=running, 0=stopped)",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
     vfdspeedhz = prometheus.NewGaugeVec(
@@ -421,7 +835,7 @@ var (
             Name:     "speed_hz",
             Help:     "Current VFD speed in Hertz",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
     vfdspeedrpm = prometheus.NewGaugeVec(
@@ -430,8 +844,17 @@ var (
             Name:     "speed_rpm",
             Help:     "Current VFD speed in RPM",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
+
+    vfdspeedpercent = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Namespace: "vfd",
+            Name:     "speed_percent",
+            Help:     "Current VFD speed in Percent",
+        },
+        []string{"ip", "group", "fan_number"},
+    )    
 
         vfdamperage = prometheus.NewGaugeVec(
         prometheus.GaugeOpts{
@@ -439,7 +862,7 @@ var (
             Name:     "amperage",
             Help:     "Current VFD amperage usage",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
         vfdcfm = prometheus.NewGaugeVec(
@@ -448,7 +871,7 @@ var (
             Name:     "cfm",
             Help:     "Current Fan CFM",
         },
-        []string{"ip", "pod", "fan_number"},
+        []string{"ip", "group", "fan_number"},
     )
 
 )
@@ -458,16 +881,14 @@ func init() {
     prometheus.MustRegister(vfdstatus)
     prometheus.MustRegister(vfdspeedhz)
     prometheus.MustRegister(vfdspeedrpm)
+    prometheus.MustRegister(vfdspeedpercent)
     prometheus.MustRegister(vfdamperage)
     prometheus.MustRegister(vfdcfm)
 }
 
+// updateMetrics uses cached vfdData for Prometheus metrics
 func updateMetrics() {
-    // Collect metrics immediately
-    collectMetrics()
-
-    // Then collect periodically
-    ticker := time.NewTicker(60 * time.Second)
+    ticker := time.NewTicker(15 * time.Second)
     defer ticker.Stop()
 
     for range ticker.C {
@@ -476,36 +897,92 @@ func updateMetrics() {
 }
 
 func collectMetrics() {
-    log.Println("Collecting VFD metrics...")
-    for _, drives := range vfdConfig {
-        for _, drive := range drives {
-            client, handler, err := setupModbusClient(drive.IP, drive.Port)
-            if err != nil {
-                log.Printf("Error connecting to VFD %s: %v", drive.IP, err)
-                continue
-            }
+    log.Println("Updating Prometheus metrics from cached VFD data...")
+    vfdDataMutex.RLock()
+    defer vfdDataMutex.RUnlock()
 
-            status, _, actualSpeed, current, err := getDriveStatus(client)
-            if err != nil {
-                log.Printf("Error reading VFD %s status: %v", drive.IP, err)
-                handler.Close()
-                continue
-            
+    for _, drive := range vfdData {
+        ip, _ := drive["ip"].(string)
+        group := fmt.Sprintf("%v", drive["group"])
+        fan := fmt.Sprintf("%v", drive["fanNumber"])
 
-            labels := prometheus.Labels{
-                "ip":         drive.IP,
-                "pod":        fmt.Sprintf("%d", drive.Pod),
-                "fan_number": fmt.Sprintf("%d", drive.FanNumber),
-            }
-
-            vfdstatus.With(labels).Set(float64(status))
-            vfdspeedhz.With(labels).Set(actualSpeed)
-            vfdspeedrpm.With(labels).Set(actualSpeed * float64(drive.RpmToHz))
-            vfdcfm.With(labels).Set(math.Round((actualSpeed * float64(drive.RpmToHz)) * float64(drive.CfmRpm)))
-            vfdamperage.With(labels).Set(current)
-
-            handler.Close()
+        labels := prometheus.Labels{
+            "ip":         ip,
+            "group":      group,
+            "fan_number": fan,
         }
+
+        status := 0.0
+        if drive["status"] == "Running" {
+            status = 1.0
+        }
+
+        vfdstatus.With(labels).Set(status)
+        vfdspeedhz.With(labels).Set(safeFloat(drive["actualSpeed"]))
+        vfdspeedrpm.With(labels).Set(float64(safeInt(drive["rpmSpeed"])))
+        vfdspeedpercent.With(labels).Set(safeFloat(drive["actualPercent"]))
+        vfdcfm.With(labels).Set(float64(safeInt(drive["actualCfm"])))
+        vfdamperage.With(labels).Set(safeFloat(drive["current"]))
     }
-    log.Println("Metrics collection complete")
+}
+
+// =====================
+// Main Function
+// =====================
+func main() {
+        var err error
+
+        // Load drive type profiles
+        driveTypeProfiles = make(map[string]DriveTypeProfile)
+        if err := loadDriveTypeProfiles("/etc/vfd/drive_profiles.json"); err != nil {
+            log.Fatalf("Failed to load drive type profiles: %v", err)
+        }
+
+        loadDisabledDrives()
+        
+        file, err := os.Open("/etc/vfd/config.json")
+        if err != nil {
+                log.Fatal(err)
+        }
+        defer file.Close()
+        decoder := json.NewDecoder(file)
+        if err := decoder.Decode(&appConfig); err != nil {
+                log.Fatal(err)
+        }
+
+        vfdConfig = make([][]DriveConfig, len(appConfig.VFDs))
+        for i, vfd := range appConfig.VFDs {
+                vfdConfig[i] = []DriveConfig{vfd}
+        }
+        
+        initializeVfdData()
+
+        vfdConnections = make(map[string]*VFDConnection)
+        for _, drives := range vfdConfig {
+            for _, d := range drives {
+                go manageVFDConnection(&d)
+            }
+        }
+
+        // Start polling VFDs every second in the background
+        go func() {
+            ticker := time.NewTicker(1 * time.Second)
+            defer ticker.Stop()
+
+            for range ticker.C {
+                pollAllDrives()
+            }
+        }()
+        go updateMetrics()
+
+        http.HandleFunc("/", handleLivePage)
+        http.HandleFunc("/ws", handleWebSocket)
+        http.HandleFunc("/control", handleControl)
+        http.HandleFunc("/control-events", handleControlEvents)
+        http.HandleFunc("/app-config", handleAppConfig)
+        http.HandleFunc("/vfdconnect", handleVFDConnect)
+        http.Handle("/metrics", promhttp.Handler())
+
+        log.Println("VFD Control Server v3.1 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP)
+        log.Fatal(http.ListenAndServe(appConfig.BindIP + ":80", nil))
 }
