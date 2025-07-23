@@ -174,6 +174,7 @@ go version  # Should show go1.23.2
 ```bash
 cd vfdserver
 go build -o vfdserver vfdserver.go
+mv vfdserver /usr/bin/
 ```
 
 ### Place Config Files
@@ -182,6 +183,7 @@ go build -o vfdserver vfdserver.go
 sudo mkdir -p /etc/vfd
 sudo cp config.json /etc/vfd/
 sudo cp drive_profiles.json /etc/vfd/
+sudo cp index.html /etc/vfd/
 ```
 
 ---
@@ -201,8 +203,8 @@ Create `/etc/supervisor/conf.d/vfdserver.conf`:
 
 ```
 [program:vfdserver]
-command=/path/to/vfdserver/vfdserver
-directory=/path/to/vfdserver
+command=/usr/bin/vfdserver
+directory=/usr/bin/
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/vfdserver.err.log
@@ -225,7 +227,7 @@ sudo supervisorctl start vfdserver
 
 ## Prometheus Integration
 
-- Metrics are available at `http://<BindIP>:80/metrics` for Prometheus scraping.
+- Metrics are available at `http://<BindIP>/metrics` for Prometheus scraping.
 - Example Prometheus scrape config:
   ```yaml
   scrape_configs:
