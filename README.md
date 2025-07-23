@@ -209,14 +209,6 @@ curl http://10.33.10.53/control-events
 ]
 ```
 
-### 🏷️ `/app-config` (GET)
-
-Fetch the current app/site configuration (site name, group label, etc). 🏢
-
-```bash
-curl http://10.33.10.53/app-config
-```
-
 ### 🔌 `/vfdconnect` (POST)
 
 (Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive. 🔄
@@ -230,12 +222,6 @@ curl -X POST http://10.33.10.53/vfdconnect \
   -H 'Content-Type: application/json' \
   -d '{"ip": "10.33.30.11"}'
 ```
-
-### 🔔 `/ws` (WebSocket)
-
-Live updates for all VFDs. Used by the web UI, but can be consumed by custom dashboards. 📡
-
----
 
 ## 🏗️ Building the Server
 
