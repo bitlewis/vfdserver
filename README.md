@@ -51,9 +51,11 @@
  └── index.html           # Web UI served by the Go backend
 ```
 
-> 📂 **Production config location:**
+> 📂 **Production files location:**
 > - `/etc/vfd/config.json`
 > - `/etc/vfd/drive_profiles.json`
+> - `/etc/vfd/index.html`
+> - `/usr/bin/vfdserver`
 
 ---
 
