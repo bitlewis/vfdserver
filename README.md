@@ -51,14 +51,6 @@
  └── index.html           # Web UI served by the Go backend
 ```
 
-> 📂 **Production files location:**
-> - `/etc/vfd/config.json`
-> - `/etc/vfd/drive_profiles.json`
-> - `/etc/vfd/index.html`
-> - `/usr/bin/vfdserver`
-
----
-
 ## ⚙️ Configuration
 
 ### 1️⃣ `/etc/vfd/config.json`
@@ -252,10 +244,18 @@ go build -o vfdserver vfdserver.go
 
 ### 📂 Place Config Files
 
+> 📂 **Production files location required:**
+> - `/etc/vfd/config.json`
+> - `/etc/vfd/drive_profiles.json`
+> - `/etc/vfd/index.html`
+> - `/usr/bin/vfdserver`
+
 ```bash
 sudo mkdir -p /etc/vfd
 sudo cp config.json /etc/vfd/
 sudo cp drive_profiles.json /etc/vfd/
+sudo cp index.html /etc/vfd/
+sudo mv vfdserver /usr/bin/
 ```
 
 ---
