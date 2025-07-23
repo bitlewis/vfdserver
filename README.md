@@ -1,12 +1,10 @@
+# VFD Control Server
+
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.23.2-blue?logo=go" alt="Go version" />
   <img src="https://img.shields.io/badge/Platform-Ubuntu%2024.04-orange?logo=ubuntu" alt="Ubuntu" />
   <img src="https://img.shields.io/badge/Status-Production-green" alt="Production Status" />
   <img src="https://img.shields.io/badge/License-MIT-brightgreen" alt="License" />
-</p>
-
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/991078/273420123-2e7e7e7e-2e7e-4e7e-8e7e-2e7e7e7e7e7e.png" width="120" alt="VFD Logo" />
 </p>
 
 <p align="center">
@@ -19,21 +17,23 @@
 ## 🚀 Features
 
 - ⚡ **Persistent VFD Connections**  
-  Each VFD is managed with a persistent TCP connection for fast, reliable control and status updates. Automatic reconnection and health monitoring.
+  Each VFD is managed with a persistent TCP connection for fast, reliable control and status updates. 
+  Automatic reconnection and health monitoring.
 - 🌐 **WebSocket-Powered UI**  
-  Real-time updates and control via a modern, mobile-friendly web interface. No page reloads required; all data is live.
+  Real-time updates and control via a modern, mobile-friendly web interface. 
+  No page reloads required; all data is live.
 - 🌀 **Group and Fan Management**  
-  Organize VFDs into logical groups (e.g., "pods"). Control individual fans or entire groups with one click.
+  Organize VFDs into logical groups (e.g., "pods"). 
+  Control individual fans or entire groups with one click.
 - 🧩 **Drive Profiles**  
-  Modular support for different drive types via `drive_profiles.json`. Easily extendable for new drive models.
+  Modular support for different drive types via `drive_profiles.json`. 
+  Easily extendable for new drive models.
 - 📊 **Prometheus Metrics**  
   Exposes `/metrics` endpoint for Prometheus monitoring and alerting.
 - 📝 **Control Events Log**  
   View recent control actions and their results in the UI.
 - 🌙 **Dark Mode**  
-  Toggleable dark/light mode for the web UI.
-- 🔄 **Supervisord Integration**  
-  Run the server as a managed service with automatic restarts.
+  Toggleable dark/light mode for the web UI. 
 - 🛠️ **Configurable via JSON**  
   All drives and profiles are configured via JSON files in `/etc/vfd`.
 - 🛡️ **Security-Ready**  
@@ -41,28 +41,28 @@
 
 ---
 
-## File Structure
+## 🗂️ File Structure
 
-- `vfdserver/vfdserver.go` — Main Go server source code.
-- `vfdserver/config.json` — Example configuration file for VFDs (copy to `/etc/vfd/config.json`).
-- `vfdserver/drive_profiles.json` — Example drive type profiles (copy to `/etc/vfd/drive_profiles.json`).
-- `vfdserver/index.html` — Web UI served by the Go backend.
+```
+📁 vfdserver/
+ ├── vfdserver.go         # Main Go server source code
+ ├── config.json          # Example configuration file for VFDs
+ ├── drive_profiles.json  # Example drive type profiles
+ └── index.html           # Web UI served by the Go backend
+```
 
-**Production config location:**
-- `/etc/vfd/config.json`
-- `/etc/vfd/drive_profiles.json`
-- `/etc/vfd/index.html`
-- `/usr/bin/vfdserver`
+> 📂 **Production config location:**
+> - `/etc/vfd/config.json`
+> - `/etc/vfd/drive_profiles.json`
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
-### 1. `/etc/vfd/config.json`
+### 1️⃣ `/etc/vfd/config.json`
 
-Defines the site, network, and all VFDs to be managed.
+Defines the site, network, and all VFDs to be managed. 🏭
 
-**Example:**
 ```json
 {
   "SiteName": "BLU02",
@@ -84,25 +84,17 @@ Defines the site, network, and all VFDs to be managed.
   ]
 }
 ```
-- `SiteName`: Displayed in the UI and logs.
-- `BindIP`: IP address to bind the web server (use `0.0.0.0` for all interfaces).
-- `GroupLabel`: Label for groups (e.g., "POD", "Zone").
-- `VFDs`: List of VFDs, each with:
-  - `IP`: VFD IP address
-  - `Port`: Modbus TCP port (usually 502)
-  - `Unit`: Modbus unit ID
-  - `FanNumber`: Logical fan number in group
-  - `FanDesc`: Description (shown in UI)
-  - `Group`: Group number
-  - `RpmHz`: Conversion factor for RPM/Hz
-  - `CfmRpm`: Conversion factor for CFM/RPM
-  - `DriveType`: Must match a key in `drive_profiles.json`
 
-### 2. `/etc/vfd/drive_profiles.json`
+- 🏷️ `SiteName`: Displayed in the UI and logs.
+- 🌐 `BindIP`: IP address to bind the web server (use `0.0.0.0` for all interfaces).
+- 🏷️ `GroupLabel`: Label for groups (e.g., "POD", "Zone").
+- 🛠️ `VFDs`: List of VFDs, each with:
+  - `IP`, `Port`, `Unit`, `FanNumber`, `FanDesc`, `Group`, `RpmHz`, `CfmRpm`, `DriveType`
 
-Defines register mappings and control logic for each supported drive type.
+### 2️⃣ `/etc/vfd/drive_profiles.json`
 
-**Example:**
+Defines register mappings and control logic for each supported drive type. ⚡
+
 ```json
 {
   "OptidriveP2": {
@@ -139,35 +131,33 @@ Defines register mappings and control logic for each supported drive type.
   }
 }
 ```
-- Each key is a drive type (must match `DriveType` in config.json)
-- Register addresses and control values are specific to your hardware
+
+> 🧩 **Tip:** Each key is a drive type (must match `DriveType` in config.json). Register addresses and control values are specific to your hardware.
 
 ---
 
-## Web Interface
+## 🖥️ Web Interface
 
-- **Live Dashboard:**
-  - View all VFDs, grouped, with real-time status (speed, CFM, amps, etc.)
-- **Control Panel:**
-  - Set speed (Hz or %), start/stop/hold fans, select all, and group quick controls
-- **Event Log:**
-  - See recent control actions and their results
-- **Dark Mode:**
-  - Toggle with the button in the top right
-- **Responsive:**
-  - Works on desktop and mobile
+- 🟢 **Live Dashboard:** View all VFDs, grouped, with real-time status (speed, CFM, amps, etc.)
+- 🎛️ **Control Panel:** Set speed (Hz or %), start/stop/hold fans, select all, and group quick controls
+- 📋 **Event Log:** See recent control actions and their results
+- 🌗 **Dark Mode:** Toggle with the button in the top right
+- 📱 **Responsive:** Works on desktop and mobile
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/991078/273420124-2e7e7e7e-2e7e-4e7e-8e7e-2e7e7e7e7e7e.png" width="600" alt="VFD Web UI Screenshot" />
+</p>
 
 ---
 
 ## 🌍 Remote Control API
 
-Remotely control the VFD server by sending JSON commands to its HTTP endpoints. All endpoints are accessible on `http://<BindIP>:80` (as set in your config).
+Remotely control the VFD server by sending JSON commands to its HTTP endpoints. All endpoints are accessible on `http://<BindIP>:80` (as set in your config). 🌐
 
-### `/control` (POST)
+### 🔗 `/control` (POST)
 
 Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:
 
-**Payload:**
 ```json
 {
   "drives": ["10.33.30.11", "10.33.30.12"],
@@ -175,37 +165,34 @@ Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:
   "speed": 45.0          // (Hz) Only required for SetSpeed
 }
 ```
-- `drives`: List of VFD IPs to control
-- `action`: Control action (see below)
-- `speed`: (Optional) Frequency in Hz for `SetSpeed`
+
+- 🖥️ `drives`: List of VFD IPs to control
+- 🏷️ `action`: Control action (see below)
+- ⚡ `speed`: (Optional) Frequency in Hz for `SetSpeed`
 
 **Actions:**
-- `Start`: Start the selected drives
-- `Stop`: Stop the selected drives
-- `Fanhold`: Set speed to 0 Hz but keep drive enabled
-- `Freespin`: Alias for Stop (let fan coast)
-- `SetSpeed`: Set the speed (Hz) and start the drive
+- ▶️ `Start`: Start the selected drives
+- ⏹️ `Stop`: Stop the selected drives
+- 💤 `Fanhold`: Set speed to 0 Hz but keep drive enabled
+- 🌀 `Freespin`: Alias for Stop (let fan coast)
+- 🎚️ `SetSpeed`: Set the speed (Hz) and start the drive
 
-**Example (curl):**
 ```bash
 curl -X POST http://10.33.10.53/control \
   -H 'Content-Type: application/json' \
   -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'
 ```
 
-**Response:**
-- `200 OK` with message `Control action processed successfully` or error details
+> ✅ **Success:** `200 OK` with message `Control action processed successfully` or error details
 
-### `/control-events` (GET)
+### 📜 `/control-events` (GET)
 
-Fetch a list of recent control events (for audit/logging).
+Fetch a list of recent control events (for audit/logging). 🕒
 
-**Example:**
 ```bash
 curl http://10.33.10.53/control-events
 ```
 
-**Response:**
 ```json
 [
   {
@@ -220,45 +207,42 @@ curl http://10.33.10.53/control-events
 ]
 ```
 
-### `/app-config` (GET)
+### 🏷️ `/app-config` (GET)
 
-Fetch the current app/site configuration (site name, group label, etc).
+Fetch the current app/site configuration (site name, group label, etc). 🏢
 
-**Example:**
 ```bash
 curl http://10.33.10.53/app-config
 ```
 
-### `/vfdconnect` (POST)
+### 🔌 `/vfdconnect` (POST)
 
-(Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive.
+(Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive. 🔄
 
-**Payload:**
 ```json
 { "ip": "10.33.30.11" }
 ```
 
-**Example:**
 ```bash
 curl -X POST http://10.33.10.53/vfdconnect \
   -H 'Content-Type: application/json' \
   -d '{"ip": "10.33.30.11"}'
 ```
 
-### `/ws` (WebSocket)
+### 🔔 `/ws` (WebSocket)
 
-Live updates for all VFDs. Used by the web UI, but can be consumed by custom dashboards.
+Live updates for all VFDs. Used by the web UI, but can be consumed by custom dashboards. 📡
 
 ---
 
-## Building the Server
+## 🏗️ Building the Server
 
-### Prerequisites
+### 🧰 Prerequisites
 
-- Ubuntu 24.04
-- Go 1.23.2 (do not use system default if older)
+- 🐧 Ubuntu 24.04
+- 🦦 Go 1.23.2 (do not use system default if older)
 
-### Install Go 1.23.2
+### 📥 Install Go 1.23.2
 
 ```bash
 sudo apt update
@@ -271,42 +255,40 @@ source ~/.bashrc
 go version  # Should show go1.23.2
 ```
 
-### Build the Server
+### 🏗️ Build the Server
 
 ```bash
 cd vfdserver
 go build -o vfdserver vfdserver.go
-mv vfdserver /usr/bin/
 ```
 
-### Place Config Files
+### 📂 Place Config Files
 
 ```bash
 sudo mkdir -p /etc/vfd
 sudo cp config.json /etc/vfd/
 sudo cp drive_profiles.json /etc/vfd/
-sudo cp index.html /etc/vfd/
 ```
 
 ---
 
-## Running with Supervisord
+## 🛡️ Running with Supervisord
 
-### Install supervisord
+### 🛠️ Install supervisord
 
 ```bash
 sudo apt update
 sudo apt install supervisor
 ```
 
-### Example supervisord config
+### ⚙️ Example supervisord config
 
 Create `/etc/supervisor/conf.d/vfdserver.conf`:
 
-```
+```ini
 [program:vfdserver]
-command=/usr/bin/vfdserver
-directory=/usr/bin/
+command=/path/to/vfdserver/vfdserver
+directory=/path/to/vfdserver
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/vfdserver.err.log
@@ -315,7 +297,7 @@ user=youruser
 environment=PATH="/usr/local/go/bin:%(ENV_PATH)s"
 ```
 
-**Replace `/path/to/vfdserver` and `youruser` as appropriate.**
+> ⚠️ **Replace `/path/to/vfdserver` and `youruser` as appropriate.**
 
 Reload and start:
 
@@ -327,65 +309,68 @@ sudo supervisorctl start vfdserver
 
 ---
 
-## Prometheus Integration
+## 📈 Prometheus Integration
 
-- Metrics are available at `http://<BindIP>/metrics` for Prometheus scraping.
-- Example Prometheus scrape config:
-  ```yaml
-  scrape_configs:
-    - job_name: 'vfdserver'
-      static_configs:
-        - targets: ['10.33.10.53:80']
-  ```
+- 📊 Metrics are available at `http://<BindIP>:80/metrics` for Prometheus scraping.
+- 📝 Example Prometheus scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: 'vfdserver'
+    static_configs:
+      - targets: ['10.33.10.53:80']
+```
 
 ---
 
-## Security
+## 🔒 Security
 
-- **No authentication is built-in.**
-- **Strongly recommended:** Run behind a reverse proxy (e.g., nginx) for HTTPS and access control.
-- Example nginx snippet:
-  ```nginx
-  server {
-    listen 443 ssl;
-    server_name vfd.example.com;
-    ssl_certificate /etc/letsencrypt/live/vfd.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/vfd.example.com/privkey.pem;
-    location / {
-      proxy_pass http://10.33.10.53:80;
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
-    }
+- 🚫 **No authentication is built-in.**
+- 🛡️ **Strongly recommended:** Run behind a reverse proxy (e.g., nginx) for HTTPS and access control.
+
+```nginx
+server {
+  listen 443 ssl;
+  server_name vfd.example.com;
+  ssl_certificate /etc/letsencrypt/live/vfd.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/vfd.example.com/privkey.pem;
+  location / {
+    proxy_pass http://10.33.10.53:80;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
   }
-  ```
+}
+```
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
-- **Server fails to start:**
-  - Check `/var/log/vfdserver.err.log` (if using supervisord)
-  - Ensure `/etc/vfd/config.json` and `/etc/vfd/drive_profiles.json` exist and are valid JSON
-  - Ensure Go version is 1.23.2 or newer
-- **Web UI not updating:**
-  - Check browser console for WebSocket errors
-  - Ensure server is running and accessible on the network
-- **Drives not responding:**
-  - Check network connectivity to VFDs
-  - Verify Modbus settings in config.json
-  - Check drive_profiles.json for correct register mappings
-
----
-
-## License
-
-MIT
+> ❗ **Server fails to start:**
+> - 📝 Check `/var/log/vfdserver.err.log` (if using supervisord)
+> - 📂 Ensure `/etc/vfd/config.json` and `/etc/vfd/drive_profiles.json` exist and are valid JSON
+> - 🦦 Ensure Go version is 1.23.2 or newer
+>
+> ❗ **Web UI not updating:**
+> - 🖥️ Check browser console for WebSocket errors
+> - 🌐 Ensure server is running and accessible on the network
+>
+> ❗ **Drives not responding:**
+> - 🌐 Check network connectivity to VFDs
+> - ⚙️ Verify Modbus settings in config.json
+> - 🧩 Check drive_profiles.json for correct register mappings
 
 ---
 
-## Credits
+## 📄 License
 
-- Developed by Louis Valois for AAIMDC
-- Uses [grid-x/modbus](https://github.com/grid-x/modbus), [gorilla/websocket](https://github.com/gorilla/websocket), and [prometheus/client_golang](https://github.com/prometheus/client_golang) 
+MIT (or your preferred license)
+
+---
+
+## 🙏 Credits
+
+- 👨‍💻 Developed by Louis Valois for AAIMDC
+- 🔗 Uses [grid-x/modbus](https://github.com/grid-x/modbus), [gorilla/websocket](https://github.com/gorilla/websocket), and [prometheus/client_golang](https://github.com/prometheus/client_golang) 
