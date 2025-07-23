@@ -1,0 +1,34 @@
+{
+    "OptidriveP2": {
+      "Setpoint": [1, 207],
+      "SpeedPresetMultiplier": 6,
+      "Control": 0,
+      "StartValue": 1,
+      "StopValue": 0,
+      "UnTripRegister": 0,
+      "UnTripValue": 4,
+      "OutputFrequency": 7,
+      "OutputCurrent": 8,
+      "Status": 6,
+      "StatusBits": {
+        "Enabled": 0,
+        "Tripped": 1,
+        "Inhibited": 3
+      }
+    },
+    "OptidriveE3": {
+      "Setpoint": [1],
+      "Control": 0,
+      "StartValue": 1,
+      "StopValue": 0,
+      "UnTripRegister": 0,
+      "UnTripValue": 4,
+      "OutputFrequency": 7,
+      "OutputCurrent": 8,
+      "Status": 6,
+      "StatusBits": {
+        "Enabled": 0,
+        "Tripped": 1
+      }
+    }
+}
