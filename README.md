@@ -148,6 +148,43 @@ Defines register mappings and control logic for each supported drive type. ⚡
 
 Remotely control the VFD server by sending JSON commands to its HTTP endpoints. All endpoints are accessible on `http://<BindIP>:80` (as set in your config). 🌐
 
+### 🖥️ `/devices` (GET)
+
+Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).
+
+**Example:**
+```bash
+curl http://10.33.10.53/devices
+```
+
+**Example Output:**
+```json
+[
+  {
+    "IP": "10.33.30.11",
+    "DriveType": "OptidriveE3",
+    "Group": 1,
+    "FanNumber": 1,
+    "FanDesc": "1x 1800RPM 29.5kCFM",
+    "RpmHz": 30,
+    "CfmRpm": 16.38888888,
+    "Port": 502,
+    "Unit": 1,
+    "setSpeed": 45.0,
+    "actualSpeed": 44.8,
+    "rpmSpeed": 1344,
+    "actualCfm": 22000,
+    "current": 8.2,
+    "status": "Running",
+    "lastUpdated": 1718030000
+    // ... other live fields ...
+  },
+  // ... more drives ...
+]
+```
+
+Returns an array of objects, each containing both static config and live data for every drive.
+
 ### 🔗 `/control` (POST)
 
 Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:
