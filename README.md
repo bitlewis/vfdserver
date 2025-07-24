@@ -139,7 +139,7 @@ Defines register mappings and control logic for each supported drive type. ⚡
 - 📱 **Responsive:** Works on desktop and mobile
 
 <p align="center">
-  <img src="https://i.imgur.com/BB3H6MY.png" width="600" alt="VFD Web UI Screenshot" />
+  <img src="https://user-images.githubusercontent.com/991078/273420124-2e7e7e7e-2e7e-4e7e-8e7e-2e7e7e7e7e7e.png" width="600" alt="VFD Web UI Screenshot" />
 </p>
 
 ---
