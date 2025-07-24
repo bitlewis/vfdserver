@@ -85,10 +85,23 @@
         .dark-mode .select-all { accent-color: #388e3c; }
         .dark-mode .drive-checkbox { accent-color: #388e3c; }
         html, body {
-            height: 100%;
+            /* height: 100%; */
         }
         .container {
-            min-height: 100vh;
+            /* min-height: 100vh; */
+        }
+        .modal, #apiModal {
+          /* Ensure modal overlay is always the same */
+        }
+        #apiModal .modal-content, #apiModal > div {
+          color: #111 !important;
+        }
+        #apiModal, #apiModal * {
+          color: #111 !important;
+        }
+        /* Prevent dark mode from affecting modal */
+        .dark-mode #apiModal, .dark-mode #apiModal * {
+          color: #111 !important;
         }
     </style>
     <script>
@@ -374,6 +387,9 @@
                 localStorage.setItem('darkMode', darkPref);
                 setDarkMode(darkPref);
             };
+            document.getElementById('apiModalBtn').onclick = function() {
+              document.getElementById('apiModal').style.display = 'block';
+            };
         });
         setInterval(updateControlEvents, 1000);
     </script>
@@ -394,6 +410,69 @@
                 <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
             </div>
             <button id="darkModeToggle" style="padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer; margin-left: 20px;">🌙 Dark Mode</button>
+        </div>
+        <button id="apiModalBtn" style="position:fixed;bottom:24px;right:32px;z-index:1100;padding:8px 18px;border-radius:6px;border:none;background:#007bff;color:#fff;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:background 0.2s;">🌍 Remote Control API</button>
+        <div id="apiModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
+          <div style="background:#fff; margin:5% auto; padding:30px 24px 24px 24px; border-radius:12px; max-width:600px; position:relative; box-shadow:0 4px 32px rgba(0,0,0,0.2); font-size:16px;">
+            <button onclick="document.getElementById('apiModal').style.display='none'" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:28px; color:#333; cursor:pointer;">&times;</button>
+            <h2 style="margin-top:0;">🌍 Remote Control API</h2>
+            <div style="overflow-x:auto; max-width:100%;">
+              <div style="margin-bottom:18px;">
+                <b>Remotely control the VFD server by sending JSON commands to its HTTP endpoints.</b><br>
+                All endpoints are accessible on <code>http://&lt;BindIP&gt;:80</code> (as set in your config).
+              </div>
+              <h3 style="margin-bottom:6px;">🖥️ <b>/devices</b> (GET)</h3>
+              <div style="margin-bottom:8px;">Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://10.33.10.53/devices</code></div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"IP": "10.33.30.11",<br>&nbsp;&nbsp;&nbsp;&nbsp;"DriveType": "OptidriveE3",<br>&nbsp;&nbsp;&nbsp;&nbsp;"Group": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanNumber": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanDesc": "1x 1800RPM 29.5kCFM",<br>&nbsp;&nbsp;&nbsp;&nbsp;"RpmHz": 30,<br>&nbsp;&nbsp;&nbsp;&nbsp;"CfmRpm": 16.38888888,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Port": 502,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Unit": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"setSpeed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualSpeed": 44.8,<br>&nbsp;&nbsp;&nbsp;&nbsp;"rpmSpeed": 1344,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualCfm": 22000,<br>&nbsp;&nbsp;&nbsp;&nbsp;"current": 8.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;"status": "Running",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastUpdated": 1718030000<br>&nbsp;&nbsp;&nbsp;&nbsp;// ... other live fields ...<br>&nbsp;&nbsp;}<br>]</code>
+              </div>
+              <div style="margin-bottom:18px;">Returns an array of objects, each containing both static config and live data for every drive.</div>
+              <h3 style="margin-bottom:6px;">🔗 <b>/control</b> (POST)</h3>
+              <div style="margin-bottom:8px;">Remotely start, stop, set speed, or hold fans.<br>Accepts a JSON payload with the following elements:</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:14px; margin-bottom:8px;">
+                <code>{<br>&nbsp;&nbsp;"drives": ["10.33.30.11", "10.33.30.12"],<br>&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;"speed": 45.0<br>}</code>
+              </div>
+              <div style="margin-bottom:8px;">Query Elements:</div>
+              <ul style="font-size:14px; margin-bottom:8px;">
+                <li><b>drives</b>: Array of VFD IPs to control</li>
+                <li><b>action</b>: Control action (see below)</li>
+                <li><b>speed</b>: Frequency in Hz for SetSpeed action only (Optional)</li>
+              </ul>
+              </div>
+              <div style="margin-bottom:8px;">Actions:</div>
+              <ul style="font-size:14px; margin-bottom:8px;">
+                <li>▶️ <b>Start</b>: Start the selected drives</li>
+                <li>⏹️ <b>Stop</b>: Stop the selected drives</li>
+                <li>🛑 <b>Fanhold</b>: Set speed to 0 Hz but keep drive enabled</li>
+                <li>𖣘 <b>Freespin</b>: Alias for Stop (let fan coast)</li>
+                <li>⏲ <b>SetSpeed</b>: Set the speed (Hz) and start the drive</li>
+              </ul>
+              <div style="margin-bottom:8px;">Example <b>curl</b> command:</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>curl -X POST http://10.33.10.53/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
+              </div>
+              <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</div>
+
+              <h3 style="margin-bottom:6px;">📜 <b>/control-events</b> (GET)</h3>
+              <div style="margin-bottom:8px;">Fetch a list of recent control events (for audit/logging).</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>curl http://10.33.10.53/control-events</code>
+              </div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2024-06-10T12:34:56Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;&nbsp;&nbsp;"speed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"drives": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.11", "success": true },<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.12", "success": false, "error": "Tripped" }<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
+              </div>
+
+              <h3 style="margin-bottom:6px;">🔌 <b>/vfdconnect</b> (POST)</h3>
+              <div style="margin-bottom:8px;">Connect or disconnect a VFD by IP. Used by the UI to reconnect or disconnect a drive. This is merely a toggle, so invoking this does not specify whether to turn it on or off, it just change it's status.</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>{ "ip": "10.33.30.11" }</code>
+              </div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>curl -X POST http://10.33.10.53/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="drives-box">
             <div id="drive-container" class="drives-panel"></div>
