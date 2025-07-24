@@ -1,0 +1,12 @@
+Optidrive P2 Setup for Fieldbus/Modbus Control with VFDServer
+
+P1-02 > 0
+P1-12 > 4
+P1-14 > 201
+
+P2-26 > Auto-0 ||| TBD if this means the drive will auto restart after having been powered off if theres a power flicker
+P2-39 > 0
+
+P5-05 > 5.0
+P5-06 > 3
+P5-07 > 0
