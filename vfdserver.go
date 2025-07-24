@@ -1036,6 +1036,6 @@ func main() {
         http.HandleFunc("/devices", handleDevices)
         http.Handle("/metrics", promhttp.Handler())
 
-        log.Println("VFD Control Server v3.1 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP)
+        log.Println("VFD Control Server v3.3 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP)
         log.Fatal(http.ListenAndServe(appConfig.BindIP + ":80", nil))
 }
