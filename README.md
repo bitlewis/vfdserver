@@ -241,6 +241,7 @@ curl http://10.33.10.53/control-events
 ### 🔌 `/vfdconnect` (POST)
 
 (Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive. 🔄
+We can also use the disconnect/reconnect to force the VFD connection manager to recheck a VFD that may have recovered.
 
 ```json
 { "ip": "10.33.30.11" }
