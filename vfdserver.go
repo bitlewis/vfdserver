@@ -1,4 +1,4 @@
-// VFD Control Server v3.2 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.3 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
@@ -211,8 +211,16 @@ func manageVFDConnection(vfd *DriveConfig) {
     unit := byte(vfd.Unit)
     var conn *VFDConnection
     var err error
+    wasUnavailable := false
 
     for {
+        // 1. If disabled, sleep and skip connection attempts
+        if disabledDrives[ip] {
+            time.Sleep(10 * time.Second)
+            continue
+        }
+
+        // 2. Try to connect up to 3 times
         var lastErr error
         for i := 0; i < 3; i++ {
             conn, err = connectVFD(ip, port, unit)
@@ -220,48 +228,49 @@ func manageVFDConnection(vfd *DriveConfig) {
                 vfdConnectionsMu.Lock()
                 vfdConnections[ip] = conn
                 vfdConnectionsMu.Unlock()
+                if wasUnavailable {
+                    log.Printf("VFD %s is now AVAILABLE (reconnected)", ip)
+                    wasUnavailable = false
+                }
                 goto Connected
             }
             lastErr = err
-            log.Printf("Initial connection to %s has failed: %v. Retrying in 5s...", ip, err)
+            if i == 2 {
+                log.Printf("VFD %s: 3 connection attempts failed. Last error: %v. Retrying in 5 minutes.", ip, lastErr)
+            }
             time.Sleep(5 * time.Second)
         }
-        log.Printf("Failed to connect to %s after 3 attempts. Last error: %v. Backing off for 15 minutes.", ip, lastErr)
-        time.Sleep(15 * time.Minute)
-    }
-    Connected:
-    for {
-        // Monitor connection health, e.g., by periodic ping/read
-        time.Sleep(5 * time.Second)
-        vfdConnectionsMu.RLock()
-        conn, ok := vfdConnections[ip]
-        vfdConnectionsMu.RUnlock()
-        if !ok {
-            log.Printf("Connection for %s not found, skipping health check.", ip)
-            continue
-        }
-        conn.mu.Lock()
-        _, err := conn.client.ReadInputRegisters(context.Background(), 0, 1)
-        conn.mu.Unlock()
-        if err != nil {
-            log.Printf("Lost connection to %s: %v", ip, err)
+        // 3. After 3 failures, mark as unavailable and backoff
+        vfdConnectionsMu.Lock()
+        if conn != nil {
             conn.healthy = false
-            // Retry logic
-            for i := 0; i < 3; i++ {
-                time.Sleep(2 * time.Second)
-                newConn, err := connectVFD(ip, port, unit)
-                if err == nil {
-                    vfdConnectionsMu.Lock()
-                    vfdConnections[ip] = newConn
-                    vfdConnectionsMu.Unlock()
-                    log.Printf("Reconnected to %s", ip)
-                    break
-                }
-                log.Printf("Reconnect attempt %d to %s failed: %v", i+1, ip, err)
+        }
+        vfdConnectionsMu.Unlock()
+        if !wasUnavailable {
+            wasUnavailable = true
+        }
+        time.Sleep(5 * time.Minute)
+        continue
+
+    Connected:
+        // 4. Health check loop
+        for {
+            if disabledDrives[ip] {
+                // If disabled while connected, close and break to outer loop
+                conn.mu.Lock()
+                conn.handler.Close()
+                conn.healthy = false
+                conn.mu.Unlock()
+                break
             }
-            if !conn.healthy {
-                log.Printf("Failed to reconnect to %s after 3 attempts. Backing off for 10 minutes.", ip)
-                time.Sleep(10 * time.Minute)
+            time.Sleep(5 * time.Second)
+            conn.mu.Lock()
+            _, err := conn.client.ReadInputRegisters(context.Background(), 0, 1)
+            conn.mu.Unlock()
+            if err != nil {
+                log.Printf("Lost connection to %s: %v", ip, err)
+                conn.healthy = false
+                break // Go back to outer loop to retry connection
             }
         }
     }
@@ -281,7 +290,7 @@ func connectVFD(ip string, port int, unit byte) (*VFDConnection, error) {
     _, err = client.ReadInputRegisters(context.Background(), 0, 1) // e.g., status register
     if err != nil {
         handler.Close()
-        return nil, fmt.Errorf("Connected by MODBUS probe failed: %w", err)
+        return nil, fmt.Errorf("Connection by MODBUS probe failed: %w", err)
     }
 
     return &VFDConnection{
@@ -796,11 +805,20 @@ func handleVFDConnect(w http.ResponseWriter, r *http.Request) {
         action = "ConnectVFD"
         go pollAllDrives()
         w.Write([]byte("Drive enabled"))
+        log.Printf("[INCOMING REQUEST] Control action: Action=%s, Drive=%v\n", action, req.IP)
+        // Start/restart the connection goroutine for this drive
+        for i := range appConfig.VFDs {
+            if appConfig.VFDs[i].IP == req.IP {
+                go manageVFDConnection(&appConfig.VFDs[i])
+                break
+            }
+        }
     } else {
         disabledDrives[req.IP] = true
         action = "DisconnectVFD"
         go pollAllDrives()
         w.Write([]byte("Drive disabled"))
+        log.Printf("[INCOMING REQUEST] Control action: Action=%s, Drive=%v\n", action, req.IP)
     }
     
     saveDisabledDrives()
