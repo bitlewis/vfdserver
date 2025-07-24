@@ -1,7 +1,8 @@
-// VFD Control Server v3.1 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.2 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
+// Added /devices json endpoint to retreive active devices with stats. Added API doc on the front-end.
 // Much more, including major UI revamp and improvements.
 
 // =====================
@@ -816,6 +817,40 @@ func handleVFDConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 // =====================
+// Devices API
+// =====================
+func handleDevices(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    vfdDataMutex.RLock()
+    defer vfdDataMutex.RUnlock()
+    // vfdData is []map[string]interface{} with live data
+    // appConfig.VFDs is []DriveConfig with static config
+    // Merge config and live data by IP
+    drives := make([]map[string]interface{}, 0, len(vfdData))
+    for _, live := range vfdData {
+        drive := make(map[string]interface{})
+        ip, _ := live["ip"].(string)
+        // Find config for this IP
+        var config *DriveConfig
+        for i := range appConfig.VFDs {
+            if appConfig.VFDs[i].IP == ip {
+                config = &appConfig.VFDs[i]
+                break
+            }
+        }
+        if config != nil {
+            drive["DriveType"] = config.DriveType
+        }
+        // Add live data
+        for k, v := range live {
+            drive[k] = v
+        }
+        drives = append(drives, drive)
+    }
+    json.NewEncoder(w).Encode(drives)
+}
+
+// =====================
 // Prometheus Metrics
 // =====================
 var (
@@ -897,7 +932,6 @@ func updateMetrics() {
 }
 
 func collectMetrics() {
-    log.Println("Updating Prometheus metrics from cached VFD data...")
     vfdDataMutex.RLock()
     defer vfdDataMutex.RUnlock()
 
@@ -981,6 +1015,7 @@ func main() {
         http.HandleFunc("/control-events", handleControlEvents)
         http.HandleFunc("/app-config", handleAppConfig)
         http.HandleFunc("/vfdconnect", handleVFDConnect)
+        http.HandleFunc("/devices", handleDevices)
         http.Handle("/metrics", promhttp.Handler())
 
         log.Println("VFD Control Server v3.1 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP)
