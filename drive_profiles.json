@@ -1,6 +1,8 @@
 {
     "OptidriveP2": {
+      "MinHz": 0,
       "Setpoint": [1, 207],
+      "SetFreqCalc": "*1",
       "SpeedPresetMultiplier": 6,
       "Control": 0,
       "StartValue": 1,
@@ -8,7 +10,10 @@
       "UnTripRegister": 0,
       "UnTripValue": 4,
       "OutputFrequency": 7,
+      "OutFreqCalc": "* 1",
+      "SignedOutputFreq": false,
       "OutputCurrent": 8,
+      "OutCurrentCalc": "/ 10",
       "Status": 6,
       "StatusBits": {
         "Enabled": 0,
@@ -17,18 +22,64 @@
       }
     },
     "OptidriveE3": {
+      "MinHz": 0,
       "Setpoint": [1],
+      "SetFreqCalc": "*1",
       "Control": 0,
       "StartValue": 1,
       "StopValue": 0,
       "UnTripRegister": 0,
       "UnTripValue": 4,
       "OutputFrequency": 7,
+      "OutFreqCalc": "* 1", 
+      "SignedOutputFreq": false,
       "OutputCurrent": 8,
+      "OutCurrentCalc": "/ 10",
       "Status": 6,
       "StatusBits": {
         "Enabled": 0,
         "Tripped": 1
+      }
+    },
+    "CFW500": {
+      "Setpoint": [1012],
+      "MinHz": 30,
+      "SetFreqCalc": "/ 60 * 8192",
+      "Control": 1011,
+      "StartValue": 1,
+      "StopValue": 0,
+      "OutputFrequency": 681,
+      "OutFreqCalc": "* 60 / 8192", 
+      "SignedOutputFreq": true,
+      "OutputCurrent": 3,
+      "OutCurrentCalc": "/ 10",
+      "Status": 680,
+      "StatusBits": {
+        "Enabled": 8,
+        "ConfigMode": 6,
+        "UnderVoltage": 13,
+        "Inhibited": 15,
+        "AlarmCondition": 7
+      }
+    },
+    "GS44020": {
+      "Setpoint": [2070],
+      "MinHz": 30,
+      "SetFreqCalc": "* 100",
+      "Control": 2069,
+      "UnTripRegister": 2069,
+      "UnTripValue": 4,      
+      "StartValue": 1,
+      "StopValue": 0,
+      "OutputFrequency": 8451,
+      "OutFreqCalc": "/ 100", 
+      "SignedOutputFreq": true,
+      "OutputCurrent": 8452,
+      "OutCurrentCalc": "/ 100",
+      "EnabledStatus": 8449,
+      "Status": 8448,
+      "StatusBits": {
+        "Inhibited": 3
       }
     }
 }
