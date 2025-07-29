@@ -3,7 +3,7 @@
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
 // Added /devices json endpoint to retreive active devices with stats. Added API doc on the front-end.
-// Much more, including major UI revamp and improvements.
+// Much more, including major UI revamp and improvements. Added bindport sent to front-end for websocket initiation.
 // Added support for Automation Direct GS4-4020 and WEG CFW500 drives with some improvements as well.
 
 // =====================
@@ -35,6 +35,7 @@ import (
 type AppConfig struct {
     SiteName   string        `json:"SiteName"`
     BindIP     string        `json:"BindIP"`
+    BindPort   string        `json:"BindPort"`
     NoFanHold  bool          `json:"NoFanHold"`
     GroupLabel string        `json:"GroupLabel"`
     VFDs       []DriveConfig `json:"VFDs"`
@@ -1214,6 +1215,6 @@ func main() {
         http.HandleFunc("/devices", handleDevices)
         http.Handle("/metrics", promhttp.Handler())
 
-        log.Println("VFD Control Server v3.3 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP)
-        log.Fatal(http.ListenAndServe(appConfig.BindIP + ":80", nil))
+        log.Println("VFD Control Server v3.4 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP + ":" + appConfig.BindPort)
+        log.Fatal(http.ListenAndServe(appConfig.BindIP + ":" + appConfig.BindPort, nil))
 }
