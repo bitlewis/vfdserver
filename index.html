@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
     <title>VFD Control</title>
@@ -65,7 +66,7 @@
         .dark-mode .fanhold, .dark-mode .restart, .dark-mode .stop, .dark-mode .set-speed { color: #fff !important; }
         .dark-mode .fanhold { background-color: #b71c1c !important; }
         .dark-mode .restart { background-color: #388e3c !important; }
-        .dark-mode .stop { background-color: #b71c1c !important; }
+        .dark-mode .stop { background-color: #ffa500 !important; }
         .dark-mode .set-speed { background-color: #388e3c !important; }
         .dark-mode .timestamp { color: #fff !important; border-bottom:2px solid #888; }
         .dark-mode .group { background: none !important; }
@@ -103,12 +104,20 @@
         .dark-mode #apiModal, .dark-mode #apiModal * {
           color: #111 !important;
         }
+        .counter-spin {
+          animation: fa-spin-reverse 2s infinite linear;
+        }
+        @keyframes fa-spin-reverse {
+        0% { transform: rotate(360deg); }
+        100% { transform: rotate(0deg); }
+        }
     </style>
     <script>
         // === 1. Config and Global Variables ===
         let siteName = "VFD Control";
         let groupLabel = "Group";
         let bindIP = "127.0.0.1:80";
+        let noFanHold = false;
         let expandedGroups = JSON.parse(localStorage.getItem("expandedGroups")) || {};
         if (Object.keys(expandedGroups).length === 0) {
             expandedGroups = new Proxy({}, { get: () => true }); // Default all GROUPs to expanded
@@ -121,9 +130,17 @@
             .then(cfg => {
                 if (cfg.siteName) siteName = cfg.siteName;
                 if (cfg.groupLabel) groupLabel = cfg.groupLabel;
+                if (cfg.noFanHold) noFanHold = cfg.noFanHold;
                 document.title = siteName + " VFD Control";
                 document.querySelector('h1').textContent = siteName + " VFD Control Panel";
                 if (cfg.bindIP) bindIP = cfg.bindIP;
+                
+                // Show/hide Fan Hold button based on configuration
+                const fanholdButton = document.getElementById('fanhold-button');
+                if (fanholdButton) {
+                    fanholdButton.style.display = noFanHold ? 'none' : 'inline';
+                }
+                
                 const wsProto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
                 let wsHost = bindIP.includes(':') ? bindIP : (bindIP + ':80');
                 const ws = new WebSocket(wsProto + wsHost + '/ws');
@@ -238,7 +255,7 @@
                             <span class="status-box blue" style="width: 100px; text-align: center;">${drive.actualCfm} CFM</span>
                             <span class="status-box blue" style="width: 50px; text-align: center;">${drive.current} A</span>
                             <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualPercent} %</span>
-                            <span class="status-box" style="background: ${statusColor}; color: white; text-align: center; padding: 4px; border-radius: 4px;">
+                            ${drive.clockwise === 1 && drive.actualSpeed > 0 ? '<i class="fa fa-fan fa-spin"></i>' : drive.clockwise === 0 && drive.actualSpeed > 0 ? '<i class="fa fa-fan counter-spin"></i>' :  drive.actualSpeed === 0 ? '<i class="fa fa-fan"></i>' : ''} <span class="status-box" style="background: ${statusColor}; color: white; text-align: center; padding: 4px; border-radius: 4px;">
                                 ${statusText}${countdown}
                             </span>
                         </span>
@@ -406,7 +423,9 @@
                 <button class="set-speed" tooltip="Sets VFD speed and starts it." onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>&nbsp;&nbsp; | &nbsp;&nbsp;
                 <button class="start" tooltip="Starts the VFD using previously set speed." onclick="sendControl('Start')">Start</button>
                 <button class="stop" tooltip="Stops the VFD." onclick="sendControl('Stop')">Stop</button>
-                <button class="fanhold" tooltip="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning"onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
+                <span id="fanhold-button" style="display: none;">
+                    <button class="fanhold" tooltip="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning"onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
+                </span>
                 <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
             </div>
             <button id="darkModeToggle" style="padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer; margin-left: 20px;">🌙 Dark Mode</button>
