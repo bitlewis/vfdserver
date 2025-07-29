@@ -1,9 +1,10 @@
-// VFD Control Server v3.3 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.4 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
 // Added /devices json endpoint to retreive active devices with stats. Added API doc on the front-end.
 // Much more, including major UI revamp and improvements.
+// Added support for Automation Direct GS4-4020 and WEG CFW500 drives with some improvements as well.
 
 // =====================
 // Imports
@@ -24,6 +25,7 @@ import (
     "github.com/gorilla/websocket"
     "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promhttp"
+    "strings"
 )
 
 // =====================
@@ -33,6 +35,7 @@ import (
 type AppConfig struct {
     SiteName   string        `json:"SiteName"`
     BindIP     string        `json:"BindIP"`
+    NoFanHold  bool          `json:"NoFanHold"`
     GroupLabel string        `json:"GroupLabel"`
     VFDs       []DriveConfig `json:"VFDs"`
 }
@@ -42,7 +45,7 @@ type DriveConfig struct {
     Port         int     `json:"Port"`
     Unit         int     `json:"Unit"`
     DefaultSpeed int     `json:"DefaultSpeed"`
-    Group        int     `json:"Group"`
+    Group        string  `json:"Group"`
     FanNumber    int     `json:"FanNumber"`
     FanDesc      string  `json:"FanDesc"`
     RpmToHz      float64 `json:"RpmHz"`
@@ -97,6 +100,12 @@ type DriveTypeProfile struct {
     StopValue       int            `json:"StopValue"`
     UnTripRegister  int            `json:"UnTripRegister"`
     UnTripValue     int            `json:"UnTripValue"`
+    OutFreqCalc     string         `json:"OutFreqCalc"`
+    SetFreqCalc     string         `json:"SetFreqCalc"`
+    OutCurrentCalc  string         `json:"OutCurrentCalc"`
+    SignedOutputFreq bool          `json:"SignedOutputFreq"`   
+    MinHz           int            `json:"MinHz"`
+    EnabledStatus   int            `json:"EnabledStatus"`
 }
 
 // =====================
@@ -151,16 +160,39 @@ func findDriveType(ip string) (string, bool) {
     return "", false
 }
 
-// Update statusToString to accept statusBits
-func statusToString(status int, statusBits map[string]int) string {
+// Update statusToString to handle both bit-based and integer-based status
+func statusToString(status int, statusBits map[string]int, enabledStatus int) string {
+    // If StatusBits is not defined or empty, use integer-based status
+    if statusBits == nil || len(statusBits) == 0 {
+        // Integer-based status: 0 = no fault, > 0 = fault (Inhibited)
+        if status == 0 {
+            return "Running"
+        } else {
+            return "Inhibited"
+        }
+    }
+    
+    // Special handling for GS44020 (enabled status from register 8449, inhibited from 8448)
+    if enabledStatus > 0 {
+        driveEnabled := (enabledStatus & (1 << 0)) != 0  // Bit 0 from register 8449
+        driveInhibited := (status & (1 << 3)) != 0       // Bit 3 from register 8448
+        
+        if driveInhibited {
+            return "NotReady"
+        }
+        if driveEnabled {
+            return "Running"
+        } else {
+            return "Stopped"
+        }
+    }
+    
+    // Bit-based status (legacy behavior for other drives)
     driveEnabled := (status & (1 << statusBits["Enabled"])) != 0
     driveTripped := (status & (1 << statusBits["Tripped"])) != 0
     driveInhibited := false
     if bit, ok := statusBits["Inhibited"]; ok {
         driveInhibited = (status & (1 << bit)) != 0
-    }
-    if driveEnabled {
-        return "Running"
     }
     if driveTripped {
         return "Tripped"
@@ -168,10 +200,27 @@ func statusToString(status int, statusBits map[string]int) string {
     if driveInhibited {
         return "NotReady"
     }
+    if driveEnabled {
+        return "Running"
+    }    
     if !driveEnabled {
         return "Stopped"
     }
     return "Unknown"
+}
+
+// Helper to read a single register as signed integer and return its value as float64
+func readSignedRegister(ctx context.Context, client modbus.Client, reg int) (float64, error) {
+    res, err := client.ReadHoldingRegisters(ctx, uint16(reg), 1)
+    if err != nil {
+        return 0, fmt.Errorf("read error for reg %d: %w", reg, err)
+    }
+    if len(res) < 2 {
+        return 0, fmt.Errorf("insufficient data for reg %d: got %d bytes", reg, len(res))
+    }
+    // Convert 2 bytes to signed 16-bit value
+    value := int16(res[0])<<8 | int16(res[1])
+    return float64(value), nil
 }
 
 // =====================
@@ -265,7 +314,7 @@ func manageVFDConnection(vfd *DriveConfig) {
             }
             time.Sleep(5 * time.Second)
             conn.mu.Lock()
-            _, err := conn.client.ReadInputRegisters(context.Background(), 0, 1)
+            _, err := conn.client.ReadHoldingRegisters(context.Background(), 0, 1)
             conn.mu.Unlock()
             if err != nil {
                 log.Printf("Lost connection to %s: %v", ip, err)
@@ -287,7 +336,7 @@ func connectVFD(ip string, port int, unit byte) (*VFDConnection, error) {
     client := modbus.NewClient(handler)
 
     // Try to read a known register to verify the drive is present
-    _, err = client.ReadInputRegisters(context.Background(), 0, 1) // e.g., status register
+    _, err = client.ReadHoldingRegisters(context.Background(), 0, 1) // e.g., status register
     if err != nil {
         handler.Close()
         return nil, fmt.Errorf("Connection by MODBUS probe failed: %w", err)
@@ -301,6 +350,34 @@ func connectVFD(ip string, port int, unit byte) (*VFDConnection, error) {
         unit:    unit,
         healthy: true,
     }, nil
+}
+
+// Helper to read a single register and return its value as float64
+func readInputRegister(ctx context.Context, client modbus.Client, reg int) (float64, error) {
+    res, err := client.ReadInputRegisters(ctx, uint16(reg), 1)
+    if err != nil {
+        return 0, fmt.Errorf("read error for reg %d: %w", reg, err)
+    }
+    if len(res) < 2 {
+        return 0, fmt.Errorf("insufficient data for reg %d: got %d bytes", reg, len(res))
+    }
+    // Convert 2 bytes to 16-bit value
+    value := int(res[0])<<8 | int(res[1])
+    return float64(value), nil
+}
+
+// Helper to read a single register and return its value as float64
+func readHoldingRegister(ctx context.Context, client modbus.Client, reg int) (float64, error) {
+    res, err := client.ReadHoldingRegisters(ctx, uint16(reg), 1)
+    if err != nil {
+        return 0, fmt.Errorf("read error for reg %d: %w", reg, err)
+    }
+    if len(res) < 2 {
+        return 0, fmt.Errorf("insufficient data for reg %d: got %d bytes", reg, len(res))
+    }
+    // Convert 2 bytes to 16-bit value
+    value := int(res[0])<<8 | int(res[1])
+    return float64(value), nil
 }
 
 // =====================
@@ -326,6 +403,7 @@ func initializeVfdData() {
                 "rpmSpeed":      0,
                 "actualCfm":     0,
                 "current":       0.0,
+                "clockwise":     1,
                 "status":        "Waiting",
                 "lastUpdated":   time.Now().Unix(),
             })
@@ -370,6 +448,7 @@ func pollAllDrives() {
                     updated["actualCfm"] = 0
                     updated["current"] = 0.0
                     updated["setSpeed"] = 0.0
+                    updated["clockwise"] = 1
                     updated["lastUpdated"] = time.Now().Unix()
                 }
                 mu.Unlock()
@@ -391,6 +470,7 @@ func pollAllDrives() {
                     updated["actualCfm"] = 0
                     updated["current"] = 0.0
                     updated["setSpeed"] = 0.0
+                    updated["clockwise"] = 1
                     updated["lastUpdated"] = time.Now().Unix()
                 }
                 mu.Unlock()
@@ -443,30 +523,127 @@ func pollDrive(ctx context.Context, d DriveConfig) (map[string]interface{}, erro
     conn.mu.Lock()
     defer conn.mu.Unlock()
 
-    // Use the persistent client for Modbus read
-    result, err := conn.client.ReadInputRegisters(ctx, 0, 9)
-    if err != nil || len(result) < 18 {
-        conn.healthy = false // Mark as unhealthy, will be retried by manager
-        return nil, fmt.Errorf("read error: %w", err)
+    // Read each required register individually
+    statusRaw, err := readHoldingRegister(ctx, conn.client, profile.Status)
+    if err != nil {
+        conn.healthy = false
+        return nil, err
+    }
+    
+    // Read enabled status for GS44020 drives
+    var enabledStatusRaw float64
+    if profile.EnabledStatus > 0 {
+        enabledStatusRaw, err = readHoldingRegister(ctx, conn.client, profile.EnabledStatus)
+        if err != nil {
+            conn.healthy = false
+            return nil, err
+        }
+    }
+    
+    setSpeedRaw, err := readHoldingRegister(ctx, conn.client, profile.Setpoint[0])
+    if err != nil {
+        conn.healthy = false
+        return nil, err
+    }
+    
+    // Read output frequency as signed or unsigned based on profile setting
+    var outputFreqRaw float64
+    if profile.SignedOutputFreq {
+        outputFreqRaw, err = readSignedRegister(ctx, conn.client, profile.OutputFrequency)
+    } else {
+        outputFreqRaw, err = readHoldingRegister(ctx, conn.client, profile.OutputFrequency)
+    }
+    if err != nil {
+        conn.healthy = false
+        return nil, err
+    }
+    
+    outputCurrentRaw, err := readHoldingRegister(ctx, conn.client, profile.OutputCurrent)
+    if err != nil {
+        conn.healthy = false
+        return nil, err
     }
 
-    // Use profile.Status for status register
-    status := int(result[(profile.Status-1)*2])<<8 | int(result[(profile.Status-1)*2+1])
-    setSpeed := float64(int(result[(profile.Setpoint[0])*2])<<8 | int(result[(profile.Setpoint[0])*2+1])) / 10.0
-    actualSpeed := float64(int(result[(profile.OutputFrequency-1)*2])<<8 | int(result[(profile.OutputFrequency-1)*2+1])) / 10.0
-    current := float64(int(result[(profile.OutputCurrent-1)*2])<<8 | int(result[(profile.OutputCurrent-1)*2+1])) / 10.0
+    // Detect rotation direction based on output frequency sign
+    clockwise := 1
+    if outputFreqRaw < 0 {
+        clockwise = 0
+        // Convert negative frequency to positive for calculations
+        outputFreqRaw = outputFreqRaw * -1
+    }
+    
+    status := int(statusRaw)
+    enabledStatus := int(enabledStatusRaw)
+    setSpeed := applyFreqCalc(setSpeedRaw, profile.OutFreqCalc)
+    actualSpeed := applyFreqCalc(outputFreqRaw, profile.OutFreqCalc)
+    current := applyFreqCalc(outputCurrentRaw, profile.OutCurrentCalc)
     rpm := int(actualSpeed * d.RpmToHz)
     cfm := int(math.Round(float64(rpm) * d.CfmRpm))
 
     return map[string]interface{}{
-        "setSpeed":      setSpeed,
-        "actualSpeed":   actualSpeed,
+        "setSpeed":      math.Round(setSpeed*10) / 10,
+        "actualSpeed":   math.Round(actualSpeed*10) / 10,
         "actualPercent": math.Round((actualSpeed/0.6)*10) / 10,
         "rpmSpeed":      rpm,
         "actualCfm":     cfm,
-        "current":       current,
-        "status":        statusToString(status, profile.StatusBits),
+        "current":       math.Round(current*10) / 10,
+        "status":        statusToString(status, profile.StatusBits, enabledStatus),
+        "clockwise":     clockwise,
     }, nil
+}
+
+// Helper to apply OutFreqCalc expression to the raw frequency value
+func applyFreqCalc(raw float64, expr string) float64 {
+    //fmt.Printf("applyFreqCalc: raw=%f, expr='%s'\n", raw, expr)
+    
+    // Default: divide by 10 (legacy behavior if no expr)
+    if expr == "" {
+        result := raw / 10.0
+        //fmt.Printf("  No expression, using default: %f / 10.0 = %f\n", raw, result)
+        return result
+    }
+    
+    // Trim whitespace
+    expr = strings.TrimSpace(expr)
+    //fmt.Printf("  Trimmed expr: '%s'\n", expr)
+    
+    var val1, val2 float64
+    
+    // Try to parse "/ X * Y" format (divide first, then multiply)
+    n, _ := fmt.Sscanf(expr, "/ %f * %f", &val1, &val2)
+    if n == 2 {
+        result := raw / val1 * val2
+        //fmt.Printf("  Parsed '/ %f * %f': %f / %f * %f = %f\n", val1, val2, raw, val1, val2, result)
+        return result
+    }
+    
+    // Try to parse "* X / Y" format (multiply first, then divide)
+    n, _ = fmt.Sscanf(expr, "* %f / %f", &val1, &val2)
+    if n == 2 {
+        result := raw * val1 / val2
+        //fmt.Printf("  Parsed '* %f / %f': %f * %f / %f = %f\n", val1, val2, raw, val1, val2, result)
+        return result
+    }
+    
+    // Try to parse "* X" format (just multiply)
+    n, _ = fmt.Sscanf(expr, "* %f", &val1)
+    if n == 1 {
+        result := raw * val1
+        //fmt.Printf("  Parsed '* %f': %f * %f = %f\n", val1, raw, val1, result)
+        return result
+    }
+    
+    // Try to parse "/ X" format (just divide)
+    n, _ = fmt.Sscanf(expr, "/ %f", &val1)
+    if n == 1 {
+        result := raw / val1
+        //fmt.Printf("  Parsed '/ %f': %f / %f = %f\n", val1, raw, val1, result)
+        return result
+    }
+    
+    // fallback: just return raw
+    //fmt.Printf("  Could not parse expression, returning raw: %f\n", raw)
+    return raw
 }
 
 // =====================
@@ -552,19 +729,19 @@ func setFanSpeed(ip string, setspeed float64) error {
     }
     conn.mu.Lock()
     defer conn.mu.Unlock()
-    actualSpeedSet := int(setspeed * 10)
+    actualSpeedSet := applyFreqCalc(setspeed, profile.SetFreqCalc)
     _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StartValue))
     if err != nil {
         return err
     }
     if len(profile.Setpoint) > 0 {
-        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), uint16(actualSpeedSet))
+        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), uint16(int(actualSpeedSet)))
         if err != nil {
             return err
         }
     }
     if len(profile.Setpoint) > 1 {
-        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[1]), uint16(actualSpeedSet*profile.SpeedPresetMultiplier))
+        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[1]), uint16(int(actualSpeedSet*float64(profile.SpeedPresetMultiplier))))
         if err != nil {
             return err
         }
@@ -779,10 +956,11 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
 
 
 func handleAppConfig(w http.ResponseWriter, r *http.Request) {
-    json.NewEncoder(w).Encode(map[string]string{
+    json.NewEncoder(w).Encode(map[string]interface{}{
         "siteName":   appConfig.SiteName,
         "groupLabel": appConfig.GroupLabel,
         "bindIP": appConfig.BindIP,
+        "noFanHold": appConfig.NoFanHold,
     })
 }
 
