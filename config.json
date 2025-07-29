@@ -2,6 +2,7 @@
     "SiteName": "BLU01",
     "BindIP": "10.32.10.53",
     "GroupLabel": "Group",
+    "NoFanHold": true,    
     "VFDs": [
       {
         "IP": "10.32.30.11",
@@ -13,194 +14,7 @@
         "RpmHz": 10.83333333,
         "CfmRpm": 115.3846,
         "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.12",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 2,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 1,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.13",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 3,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 1,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.14",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 4,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 1,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.15",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 5,
-        "FanDesc": "4x 1160RPM 25kCFM",
-        "Group": 1,
-        "RpmHz": 19.3,
-        "CfmRpm": 82.20689,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.16",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 6,
-        "FanDesc": "4x 1160RPM 25kCFM",
-        "Group": 1,
-        "RpmHz": 19.3,
-        "CfmRpm": 82.20689,
-        "DriveType": "OptidriveP2"
-      },         
-      {
-        "IP": "10.32.30.21",
-        "Port": 502,
-        "Unit": 1,
-        "Group": 2,
-        "FanNumber": 1,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.22",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 2,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 2,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.23",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 3,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 2,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.24",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 4,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 2,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.25",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 5,
-        "FanDesc": "4x 1160RPM 25kCFM",
-        "Group": 2,
-        "RpmHz": 19.3,
-        "CfmRpm": 82.20689,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.26",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 6,
-        "FanDesc": "4x 1160RPM 25kCFM",
-        "Group": 2,
-        "RpmHz": 19.3,
-        "CfmRpm": 82.20689,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.37",
-        "Port": 502,
-        "Unit": 1,
-        "Group": 3,
-        "FanNumber": 1,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.38",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 2,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 3,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.33",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 3,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 3,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.34",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 4,
-        "FanDesc": "3x 650RPM 25kCFM",
-        "Group": 3,
-        "RpmHz": 10.83333333,
-        "CfmRpm": 115.3846,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.35",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 5,
-        "FanDesc": "4x 1160RPM 25kCFM",
-        "Group": 3,
-        "RpmHz": 19.3,
-        "CfmRpm": 82.20689,
-        "DriveType": "OptidriveP2"
-      },
-      {
-        "IP": "10.32.30.36",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 6,
-        "FanDesc": "4x 1160RPM 25kCFM",
-        "Group": 3,
-        "RpmHz": 19.3,
-        "CfmRpm": 82.20689,
-        "DriveType": "OptidriveP2"
-      },             
+      },     
       {
         "IP": "10.33.30.11",
         "Port": 502,
@@ -211,6 +25,28 @@
         "RpmHz": 30,
         "CfmRpm": 16.38888888,
         "DriveType": "OptidriveE3"
-      }
+      },
+      {
+        "IP": "10.148.26.100",
+        "Port": 502,
+        "Unit": 1,
+        "Group": "B1-A",
+        "FanNumber": 1,
+        "FanDesc": "B1 POD A FAN 1",
+        "RpmHz": 16.817,
+        "CfmRpm": 47.5719,
+        "DriveType": "CFW500"
+      },
+      {
+        "IP": "10.148.26.201",
+        "Port": 502,
+        "Unit": 1,
+        "Group": "B2-A",
+        "FanNumber": 1,
+        "FanDesc": "B2 POD A FAN 1",
+        "RpmHz": 17.0334,
+        "CfmRpm": 51.8599,
+        "DriveType": "GS44020"
+      }        
     ]
   }
