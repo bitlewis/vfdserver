@@ -85,38 +85,18 @@
         .dark-mode .status-box { border: 1px solid #444 !important; }
         .dark-mode .select-all { accent-color: #388e3c; }
         .dark-mode .drive-checkbox { accent-color: #388e3c; }
-        html, body {
-            /* height: 100%; */
-        }
-        .container {
-            /* min-height: 100vh; */
-        }
-        .modal, #apiModal {
-          /* Ensure modal overlay is always the same */
-        }
-        #apiModal .modal-content, #apiModal > div {
-          color: #111 !important;
-        }
-        #apiModal, #apiModal * {
-          color: #111 !important;
-        }
-        /* Prevent dark mode from affecting modal */
-        .dark-mode #apiModal, .dark-mode #apiModal * {
-          color: #111 !important;
-        }
-        .counter-spin {
-          animation: fa-spin-reverse 2s infinite linear;
-        }
-        @keyframes fa-spin-reverse {
-        0% { transform: rotate(360deg); }
-        100% { transform: rotate(0deg); }
-        }
+        #apiModal .modal-content, #apiModal > div { color: #111 !important; }
+        #apiModal, #apiModal * { color: #111 !important; }
+        .dark-mode #apiModal, .dark-mode #apiModal * { color: #111 !important; }
+        .counter-spin { animation: fa-spin-reverse 2s infinite linear; }
+        @keyframes fa-spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); }}
     </style>
     <script>
         // === 1. Config and Global Variables ===
         let siteName = "VFD Control";
         let groupLabel = "Group";
-        let bindIP = "127.0.0.1:80";
+        let bindIP = "127.0.0.1";
+        let bindPort = "80";
         let noFanHold = false;
         let expandedGroups = JSON.parse(localStorage.getItem("expandedGroups")) || {};
         if (Object.keys(expandedGroups).length === 0) {
@@ -126,31 +106,46 @@
 
         // === 2. App Config and WebSocket Setup ===
         fetch('/app-config')
-            .then(r => r.json())
-            .then(cfg => {
-                if (cfg.siteName) siteName = cfg.siteName;
-                if (cfg.groupLabel) groupLabel = cfg.groupLabel;
-                if (cfg.noFanHold) noFanHold = cfg.noFanHold;
-                document.title = siteName + " VFD Control";
-                document.querySelector('h1').textContent = siteName + " VFD Control Panel";
-                if (cfg.bindIP) bindIP = cfg.bindIP;
-                
-                // Show/hide Fan Hold button based on configuration
-                const fanholdButton = document.getElementById('fanhold-button');
-                if (fanholdButton) {
-                    fanholdButton.style.display = noFanHold ? 'none' : 'inline';
-                }
-                
-                const wsProto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-                let wsHost = bindIP.includes(':') ? bindIP : (bindIP + ':80');
-                const ws = new WebSocket(wsProto + wsHost + '/ws');
-                ws.onmessage = function (event) {
-                    const data = JSON.parse(event.data);
-                    updateUI(data);
-                };
-                ws.onerror = function (e) { console.error('WebSocket error:', e); };
-                ws.onclose = function () { console.warn('WebSocket closed'); };
+        .then(r => r.json())
+        .then(cfg => {
+            if (cfg.siteName) siteName = cfg.siteName;
+            if (cfg.groupLabel) groupLabel = cfg.groupLabel;
+            if (cfg.noFanHold) noFanHold = cfg.noFanHold;
+            if (cfg.bindIP) bindIP = cfg.bindIP;
+            if (cfg.bindPort) bindPort = cfg.bindPort;
+
+            document.title = siteName + " VFD Control";
+            document.querySelector('h1').textContent = siteName + " VFD Control Panel";
+
+            // Show/hide Fan Hold button based on configuration
+            const fanholdButton = document.getElementById('fanhold-button');
+            if (fanholdButton) {
+                fanholdButton.style.display = noFanHold ? 'none' : 'inline';
+            }
+
+            // Set API modal host
+            let ip = cfg.bindIP || window.location.hostname;
+            let port = cfg.bindPort || 80;
+            // If bindIP is 0.0.0.0 or 127.0.0.1, use window.location.hostname
+            if (ip === '0.0.0.0' || ip === '127.0.0.1') {
+                ip = window.location.hostname;
+            }
+            let apiHost = ip + (port == 80 ? '' : ':' + port);
+            document.querySelectorAll('.api-host').forEach(el => {
+                el.textContent = apiHost;
             });
+
+            // Set Websocket Logic
+            const wsProto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            let wsHost = ip + (port == 80 ? '' : ':' + port);
+            const ws = new WebSocket(wsProto + wsHost + '/ws');
+            ws.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+            ws.onerror = function (e) { console.error('WebSocket error:', e); };
+            ws.onclose = function () { console.warn('WebSocket closed'); };
+        });
 
         // === 3. UI Update Functions ===
         function updateUI(data) {
@@ -438,11 +433,11 @@
             <div style="overflow-x:auto; max-width:100%;">
               <div style="margin-bottom:18px;">
                 <b>Remotely control the VFD server by sending JSON commands to its HTTP endpoints.</b><br>
-                All endpoints are accessible on <code>http://&lt;BindIP&gt;:80</code> (as set in your config).
+                All endpoints are accessible on <code>http://<span class="api-host"></span></code> (as set in your config).
               </div>
               <h3 style="margin-bottom:6px;">🖥️ <b>/devices</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://10.33.10.53/devices</code></div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://<span class="api-host"></span>/devices</code></div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
                 <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"IP": "10.33.30.11",<br>&nbsp;&nbsp;&nbsp;&nbsp;"DriveType": "OptidriveE3",<br>&nbsp;&nbsp;&nbsp;&nbsp;"Group": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanNumber": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanDesc": "1x 1800RPM 29.5kCFM",<br>&nbsp;&nbsp;&nbsp;&nbsp;"RpmHz": 30,<br>&nbsp;&nbsp;&nbsp;&nbsp;"CfmRpm": 16.38888888,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Port": 502,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Unit": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"setSpeed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualSpeed": 44.8,<br>&nbsp;&nbsp;&nbsp;&nbsp;"rpmSpeed": 1344,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualCfm": 22000,<br>&nbsp;&nbsp;&nbsp;&nbsp;"current": 8.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;"status": "Running",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastUpdated": 1718030000<br>&nbsp;&nbsp;&nbsp;&nbsp;// ... other live fields ...<br>&nbsp;&nbsp;}<br>]</code>
               </div>
@@ -469,14 +464,14 @@
               </ul>
               <div style="margin-bottom:8px;">Example <b>curl</b> command:</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl -X POST http://10.33.10.53/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
+                <code>curl -X POST http://<span class="api-host"></span>/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
               </div>
               <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</div>
 
               <h3 style="margin-bottom:6px;">📜 <b>/control-events</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of recent control events (for audit/logging).</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl http://10.33.10.53/control-events</code>
+                <code>curl http://<span class="api-host"></span>/control-events</code>
               </div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
                 <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2024-06-10T12:34:56Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;&nbsp;&nbsp;"speed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"drives": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.11", "success": true },<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.12", "success": false, "error": "Tripped" }<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
@@ -488,7 +483,7 @@
                 <code>{ "ip": "10.33.30.11" }</code>
               </div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl -X POST http://10.33.10.53/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
+                <code>curl -X POST http://<span class="api-host"></span>/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
               </div>
             </div>
           </div>
