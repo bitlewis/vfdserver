@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7,880 +8,494 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
-    <title>PDU Control Panel</title>
+    <title>VFD Control</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f7fc; color: #222; }
+        body { font-family: Arial, sans-serif; background-color: #f4f7fc; color: #222; min-height: 100vh; }
         .container { position: relative; width: 100%; }
         .header { width: 100%; text-align: center; }
         h1 { text-align: center; color: #333; font-size: 42px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
         .group { margin-bottom: 10px; }
         .group-title-container { display: flex; align-items: center; }
-        .group-title { width: 93%; cursor: pointer; font-size: 18px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; border-radius: 5px; padding: 10px 10px; border: 1px solid #4CAF50; }
+        .group-title { width: 80%; cursor: pointer; font-size: 18px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; border-radius: 5px; padding: 10px; border: 1px solid #4CAF50; }
         .drive-list { display: none; padding-left: 15px; }
-        .pdu-card { background-color: #fff; border-radius: 5px; padding: 5px; margin: 5px 0; display: flex; align-items: center; color: #222; }
-        .pdu-card.unhealthy { background-color: #fff; border: 1px solid #f44336; }
-        .category { font-size: 16px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
-        .pdu-ip a { color: inherit; text-decoration: none; }
-        .pdu-ip a:hover { color: inherit; text-decoration: underline }
+        .drive-item { padding: 5px; background: #fff; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; }
+        input[type="checkbox"] { margin-right: 10px; }
         .status-box { padding: 4px; border-radius: 4px; display: inline-block; cursor: not-allowed; border: 1px solid #5c5c5c; }
-        .status-box.healthy { background-color: #4CAF50; color: white; border: none; }
-        .status-box.error { background-color: #f44336; color: white; border: none; }
-        .status-box.grey { background-color: #d3d3d3; color: #555; border: none; }
-        .status-box.blue { background-color: #007bff; color: white; border: none; }
-        .status-box.inform { background-color: #eaeaea; color: rgb(0, 0, 0); }
-        .totalpower { font-family: Arial, sans-serif; font-weight: 700; font-size: 14px; }
-        .phase-box { background: #007bff; padding: 0px 4px; border: none; border-radius: 4px; text-align: center; color: white; margin-left: 4px; margin-right: 4px; }
-        .phase-box.voltage { background: rgb(0, 123, 255); }
-        .phase-box.amperage { background: #00b1fd; }
-        .phase-box.wattage { background: #4CAF50; }
-        .phase-box .value { padding: 4px;  }
-        .outlets { font-size: 14px; display: flex; gap: 2px; align-items: center; flex-wrap: nowrap; margin: 0 8px; }
-        .outlet { padding: 4px; width: 45px; border-radius: 4px; background-color: #007bff; border: none; text-align: center; cursor: pointer; font-weight: 500; margin-left: 2px; margin-right: 2px; }
-        .outlet.on { background-color: #4CAF50; color: white; border-color: #4CAF50; }
-        .outlet.off { background-color: #f44336; color: white; border-color: #f44336; }
-        .outlet.grey { background-color: #d3d3d3; color: #555; border-color: #d3d3d3; }
-        .outlet .power { opacity: 0.95; }
-        .outlets-container { position: relative; }
-        .outlets-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            padding-left: 10px;
-            width: 250px;
-            right: 0;
-            bottom: 0;
-            font-family: Doto, serif;
-            display: flex;
-            align-items: center;
-            color: rgb(0,0,0);
-            border-radius: 4px;
-            z-index: 5;
-        }
-        .dark-mode .outlets-overlay {
-            color: white;
-        }        
-        .control-panel { background-color: #fff; margin: 40px 40px 0 40px; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); position: sticky; top: 0; width: 95.55%; z-index: 10; }
-        .control-button-title { font-size: 20px; font-family: "Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; margin-bottom: 2px; color: #222; }
-        .fan-buttons { display: flex; align-items: center; gap: 10px; }
+        .grey { background-color: #d3d3d3; color: #555; border: none; }
+        .blue { background-color: #007bff; color: white; border: none;}
+        .green { background-color: #4CAF50; color: white; border: none;}
+        .orange { background-color: #ffa500; color: white; border: none;}
+        .inform { background-color: #eaeaea; color: rgb(0, 0, 0); }
+        .totalcfm { font-family: Arial, sans-serif; font-size: 14px;background-color: #007bff; color: white; }
+        .stale-data { background-color: #d3d3d3; }
+        .control-panel { background-color: #fff; margin: 40px auto 0 auto; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); position: sticky; top: 0; width: 96%; max-width: 3000px; z-index: 10; }
+        .control-button-title { font-size: 20px; font-family: "Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; margin-bottom: 10px; color: #222; }
         .control-panel button { font-size: 16px; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .control-panel button.fanhold { background-color: #f44336; color: white; }
+        .control-panel button.set-speed { background-color: #4CAF50; color: white; }
         .control-panel button.start { background-color: #4CAF50; color: white; }
         .control-panel button.stop { background-color: #ffa500; color: white; }
-        .control-panel .vfd-checkbox { color: #222; font-size: 16px; margin-left: 10px; }
+        .control-panel input[type="number"] { padding: 10px; border: 1px solid #999999; border-radius: 5px; width: 100px; }
         .quickbutton { font-size: 14px; padding: 5px 5px; border: none; border-radius: 5px; cursor: pointer; }
-        .quickbutton.start, .quickbutton.green { background-color: #4CAF50; color: white; }
-        .quickbutton.stop, .quickbutton.orange { background-color: #ffa500; color: white; }
-        .drives-box { padding-top: 5px; margin: 5px auto; width: 97%; }
-        .drives-panel { float: left; width: 83%; padding-bottom: 20px; }
-        .control-events-panel { float: right; width: 15%; background-color: #fff; padding: 20px; overflow-y: auto; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-        .control-events-panel h2 { margin-top: 0; font-size: 25px; font-family: "Doto", serif; font-weight: 700; }
+        .drives-box { padding-top: 5px; width: 100%; margin: 5px auto; width: 97%; display: flex; gap: 10px; }
+        .drives-panel { width: 83%; padding-bottom: 20px; }
+        .control-events-panel { width: 15%; background-color: #fff; padding: 20px; overflow-y: auto; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); min-width: 200px; }
+        @media (max-width: 768px) { .control-events-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 1px solid #ddd; } }
+        .control-events-panel h2 { margin-top: 0; font-size: 25px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
         .control-event { padding: 10px; border-bottom: 1px solid #ddd; }
-        .event-box { padding: 4px; border-radius: 4px; font-size: 12px; display: inline-block; }
+        .control-event:last-child { border-bottom: none; }
+        .event-box { padding: 4px; border-radius: 4px; font-size: 12px; display: inline-block; cursor: not-allowed; }
         .devices-box { padding: 4px; border-radius: 4px; font-size: 10px; display: inline-block; cursor: not-allowed; }
-        .timestamp { font-size: 14px; display: inline-block; border-bottom: 2px solid black; margin-bottom: 2px; }
-
+        .timestamp { font-size: 14px; display:inline-block; border-bottom:2px solid black; margin-bottom: 2px; }
+        .fan-buttons { float: left; }
+        .speed-legend { font-size: 14px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 500; }
+        .drive-item { display: flex; align-items: center; justify-content: space-between; }
         .dark-mode body, .dark-mode { background-color: #181a1b !important; color: #eee !important; }
         .dark-mode .header { background-color: #181a1b !important; }
         .dark-mode h1 { color: #fff !important; }
         .dark-mode .group-title { background: #2d333b !important; color: #fff !important; border: 1px solid #444 !important; }
-        .dark-mode .control-panel { background-color: #23272a !important; }
-        .dark-mode .control-button-title { color: #fff !important; }
-        .dark-mode .pdu-card { background: #23272a !important; color: #eee !important; }
+        .dark-mode .control-panel { background-color: #23272a !important; color: #eee !important; }
+        .dark-mode .control-button-title { color: #eee !important; }
+        .dark-mode .drive-item { background: #23272a !important; color: #eee !important; }
         .dark-mode .control-events-panel { background-color: #23272a !important; color: #eee !important; }
-        .dark-mode .status-box.grey { background-color: #3b4252 !important; color: #fff !important; }
+        .dark-mode .status-box.blue, .dark-mode .status-box.inform, .dark-mode .status-box.grey, .dark-mode .status-box.totalcfm { background-color: #3b4252 !important; color: #fff !important; }
         .dark-mode .status-box { color: #fff !important; border: 1px solid #444 !important; }
         .dark-mode .green { background-color: #4CAF50; color: white; }
         .dark-mode .orange { background-color: #ffa500; color: white; }
         .dark-mode input, .dark-mode select { background: #23272a !important; color: #eee !important; border-color: #444 !important; }
-        .dark-mode .select-all, .dark-mode .pdu-checkbox { accent-color: #388e3c; }
-        .dark-mode .timestamp { color: #fff !important; border-bottom: 2px solid #888; }
+        .dark-mode .select-all, .dark-mode .drive-checkbox { accent-color: #388e3c; }
+        .dark-mode .fanhold, .dark-mode .restart, .dark-mode .stop, .dark-mode .set-speed { color: #fff !important; }
+        .dark-mode .fanhold { background-color: #b71c1c !important; }
+        .dark-mode .restart { background-color: #388e3c !important; }
+        .dark-mode .stop { background-color: #ffa500 !important; }
+        .dark-mode .set-speed { background-color: #388e3c !important; }
+        .dark-mode .timestamp { color: #fff !important; border-bottom:2px solid #888; }
         .dark-mode .group { background: none !important; }
         .dark-mode .drives-panel { background: none !important; }
         .dark-mode .drives-box { background: none !important; }
+        .dark-mode .stale-data { background-color: #333 !important; }
         .dark-mode .control-event { border-bottom: 1px solid #444 !important; }
         .dark-mode .control-events-panel h2 { color: #fff !important; }
-        .dark-mode .status-box.healthy { background-color: #388e3c !important; }
-        .dark-mode .status-box.error { background-color: #b71c1c !important; }
+        .dark-mode .group-title { border: 1px solid #444 !important; }
+        .dark-mode .status-box.red { background-color: #b71c1c !important; }
+        .dark-mode .status-box.green { background-color: #388e3c !important; }
+        .dark-mode .status-box.blue { background-color: #1976d2 !important; }
+        .dark-mode .status-box.grey { background-color: #444 !important; }
+        .dark-mode .status-box.totalcfm { background-color: #1976d2 !important; }
         .dark-mode .status-box.inform { background-color: #444 !important; }
-
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            overflow-y: auto;
-            padding: 20px 0;
-        }
-
-        .modal-content {
-            position: relative;
-            background-color: #fff;
-            margin: 2% auto;
-            padding: 25px 30px;
-            border-radius: 10px;
-            width: 70%;
-            max-width: 800px;
-        }
-
-        .close {
-            position: absolute;
-            right: 20px;
-            top: 10px;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .close:hover {
-            color: #777;
-        }
-
-        .modal h2 {
-            margin-top: 0;
-            font-weight: 700;
-            font-size: 24px;
-            color: #333;
-        }
-
-        .dark-mode .modal-content {
-            background-color: #23272a;
-            color: #fff;
-        }
-
-        .dark-mode .modal h2 {
-            color: #fff;
-        }
-
-        .dark-mode .close {
-            color: #fff;
-        }
-
-        .dark-mode .close:hover {
-            color: #aaa;
-        }
+        .dark-mode .status-box { border: 1px solid #444 !important; }
+        .dark-mode .select-all { accent-color: #388e3c; }
+        .dark-mode .drive-checkbox { accent-color: #388e3c; }
+        #apiModal .modal-content, #apiModal > div { color: #111 !important; }
+        #apiModal, #apiModal * { color: #111 !important; }
+        .dark-mode #apiModal, .dark-mode #apiModal * { color: #111 !important; }
+        .counter-spin { animation: fa-spin-reverse 2s infinite linear; }
+        @keyframes fa-spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); }}
     </style>
+    <script>
+        // === 1. Config and Global Variables ===
+        let siteName = "VFD Control";
+        let groupLabel = "Group";
+        let bindIP = "127.0.0.1";
+        let bindPort = "80";
+        let noFanHold = false;
+        let expandedGroups = JSON.parse(localStorage.getItem("expandedGroups")) || {};
+        if (Object.keys(expandedGroups).length === 0) {
+            expandedGroups = new Proxy({}, { get: () => true }); // Default all GROUPs to expanded
+        }
+        let controlEvents = [];
+
+        // === 2. App Config and WebSocket Setup ===
+        fetch('/app-config')
+        .then(r => r.json())
+        .then(cfg => {
+            if (cfg.siteName) siteName = cfg.siteName;
+            if (cfg.groupLabel) groupLabel = cfg.groupLabel;
+            if (cfg.noFanHold) noFanHold = cfg.noFanHold;
+            if (cfg.bindIP) bindIP = cfg.bindIP;
+            if (cfg.bindPort) bindPort = cfg.bindPort;
+
+            document.title = siteName + " VFD Control";
+            document.querySelector('h1').textContent = siteName + " VFD Control Panel";
+
+            // Show/hide Fan Hold button based on configuration
+            const fanholdButton = document.getElementById('fanhold-button');
+            if (fanholdButton) {
+                fanholdButton.style.display = noFanHold ? 'none' : 'inline';
+            }
+
+            // Set API modal host
+            let ip = cfg.bindIP || window.location.hostname;
+            let port = cfg.bindPort || 80;
+            // If bindIP is 0.0.0.0 or 127.0.0.1, use window.location.hostname
+            if (ip === '0.0.0.0' || ip === '127.0.0.1') {
+                ip = window.location.hostname;
+            }
+            let apiHost = ip + (port == 80 ? '' : ':' + port);
+            document.querySelectorAll('.api-host').forEach(el => {
+                el.textContent = apiHost;
+            });
+
+            // Set Websocket Logic
+            const wsProto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            let wsHost = ip + (port == 80 ? '' : ':' + port);
+            const ws = new WebSocket(wsProto + wsHost + '/ws');
+            ws.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+            ws.onerror = function (e) { console.error('WebSocket error:', e); };
+            ws.onclose = function () { console.warn('WebSocket closed'); };
+        });
+
+        // === 3. UI Update Functions ===
+        function updateUI(data) {
+            const container = document.getElementById('drive-container');
+            const currentCheckboxStates = {};
+            document.querySelectorAll(".drive-checkbox").forEach(cb => {
+                currentCheckboxStates[cb.dataset.ip] = cb.checked;
+            });
+            let groups = {};
+            data.forEach(drive => {
+                if (!groups[drive.group]) groups[drive.group] = [];
+                groups[drive.group].push(drive);
+            });
+            container.innerHTML = '';
+            for (let group in groups) {
+                let groupDiv = document.createElement("div");
+                groupDiv.className = "group";
+                let groupTitleContainer = document.createElement("div");
+                groupTitleContainer.style.display = "flex";
+                groupTitleContainer.style.alignItems = "center";
+                let groupTitle = document.createElement("div");
+                groupTitle.className = "group-title";
+                groupTitle.style.width = "90%";
+                let totalCfm = groups[group].reduce((sum, drive) => sum + (parseFloat(drive.actualCfm) || 0), 0);
+                let avgPercent = 0;
+                if (groups[group].length > 0) {
+                    avgPercent = groups[group].reduce((sum, drive) => sum + (parseFloat(drive.actualPercent) || 0), 0) / groups[group].length;
+                }
+                groupTitle.innerHTML = `${groupLabel} ${group} &nbsp;>>&nbsp; Fan power <span class="status-box blue totalcfm">${totalCfm} CFM</span> <span class="status-box blue totalcfm">${avgPercent.toFixed(1)} %</span>`;
+                groupTitle.addEventListener("click", function () {
+                    const list = groupDiv.querySelector(".drive-list");
+                    list.style.display = (list.style.display === "block") ? "none" : "block";
+                    expandedGroups[group] = list.style.display === "block";
+                    localStorage.setItem("expandedGroups", JSON.stringify(expandedGroups));
+                });
+                let quickButtons = document.createElement("div");
+                quickButtons.style.display = "flex";
+                quickButtons.style.alignItems = "center";
+                quickButtons.innerHTML = `
+                    <button class="quickbutton green" style="margin-left:8px;" onclick="quickGroupControl('${group}', 'Start')">Start</button>
+                    <button class="quickbutton orange" style="margin-left:4px;" onclick="quickGroupControl('${group}', 'Stop')">Stop</button>
+                `;
+                let selectAllDiv = document.createElement("div");
+                selectAllDiv.style.marginLeft = "10px";
+                let selectAllChecked = groups[group].every(drive => currentCheckboxStates[drive.ip] === true);
+                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-group="${group}" ${selectAllChecked ? 'checked' : ''}> Select All`;
+                groupTitleContainer.appendChild(groupTitle);
+                groupTitleContainer.appendChild(quickButtons);
+                groupTitleContainer.appendChild(selectAllDiv);
+                let driveList = document.createElement("div");
+                driveList.className = "drive-list";
+                driveList.style.display = expandedGroups[group] ? "block" : "none";
+                groups[group].forEach(drive => {
+                    let driveItem = document.createElement("div");
+                    driveItem.className = "drive-item";
+
+                    // Use the previously stored checkbox state
+                    let checked = currentCheckboxStates[drive.ip] || false;
+
+                    let lastUpdated = new Date(drive.lastUpdated * 1000);
+                    let currentTime = new Date();
+                    let timeDiff = (currentTime - lastUpdated) / 1000;
+
+                    let countdown = '';
+                    if (timeDiff > 30) {
+                        countdown = ` (Not updated for ${Math.floor(timeDiff)} seconds)`;
+                        driveItem.classList.add("stale-data");
+                    } else {
+                        countdown = ``;
+                        driveItem.classList.remove("stale-data");
+                    }
+
+                    if (drive.status === 'Unknown') checked = false;
+
+                    const statusText = drive.status === 'Unknown' ? 'Attempting Poll' :
+                        drive.status === 'Waiting' ? 'Initialization' :
+                        drive.status === 'Running' && drive.actualSpeed === 0 ? 'Fan Hold' :
+                        drive.status === 'Stopped' ? 'Freespin' :
+                        drive.status === 'NotReady' ? 'Not Ready / Inhibited' :
+                        drive.status === 'Tripped' ? 'Tripped' :
+                        drive.status === 'Unavailable' ? 'Unavailable' :
+                        drive.status === 'Disabled' ? 'Disconnected' :
+                        drive.status === 'Running' ? 'Running' : '';
+
+                    const statusColor = drive.status === 'Stopped' ? '#FFA500' :
+                        drive.status === 'Running' && drive.actualSpeed > 0 ? '#4CAF50' :
+                        drive.status === 'NotReady' ? '#f44336' :
+                        drive.status === 'Tripped' ? '#f44336' :
+                        drive.status === 'Unavailable' ? '#f44336' :
+                        drive.status === 'Freespin' ? '#f44336' :
+                        drive.status === 'Disabled' ? '#555555' :
+                        drive.status === 'Running' && drive.actualSpeed === 0 ? '#f44336' :
+                        '#007bff';
+
+                    driveItem.innerHTML = `
+                        <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-group="${group}" ${checked ? 'checked' : ''} ${drive.status === 'Unknown' ? 'disabled' : ''}>
+                        <span style="flex:1;">
+                            Fan #${drive.fanNumber} <span class="status-box inform">[${drive.fanDesc}]</span> ${drive.ip} >>
+                            <span class="status-box grey" style="width: 60px; text-align: center;">${drive.setSpeed} Hz</span>
+                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualSpeed} Hz</span>
+                            <span class="status-box blue" style="width: 80px; text-align: center;">${drive.rpmSpeed} RPM</span>
+                            <span class="status-box blue" style="width: 100px; text-align: center;">${drive.actualCfm} CFM</span>
+                            <span class="status-box blue" style="width: 50px; text-align: center;">${drive.current} A</span>
+                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualPercent} %</span>
+                            ${drive.clockwise === 1 && drive.actualSpeed > 0 ? '<i class="fa fa-fan fa-spin"></i>' : drive.clockwise === 0 && drive.actualSpeed > 0 ? '<i class="fa fa-fan counter-spin"></i>' :  drive.actualSpeed === 0 ? '<i class="fa fa-fan"></i>' : ''} <span class="status-box" style="background: ${statusColor}; color: white; text-align: center; padding: 4px; border-radius: 4px;">
+                                ${statusText}${countdown}
+                            </span>
+                        </span>
+                    `;
+                    // Control button to enable/disable
+                    let controlBtn = document.createElement('button');
+                    controlBtn.className = 'status-box';
+                    controlBtn.style.marginLeft = '8px';
+                    controlBtn.style.fontSize = '12px';
+                    controlBtn.style.cursor = 'pointer';
+                    if (drive.status === 'Disabled') {
+                        controlBtn.textContent = 'Connect';
+                        controlBtn.style.backgroundColor = '#4CAF50';
+                        controlBtn.onclick = function() {
+                            controlBtn.disabled = true;
+                            fetch('/vfdconnect', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ ip: drive.ip })
+                            }); // Wait for WebSocket update
+                        };
+                    } else {
+                        controlBtn.textContent = 'Disconnect';
+                        controlBtn.style.backgroundColor = '#f44336';
+                        controlBtn.onclick = function() {
+                            controlBtn.disabled = true;
+                            fetch('/vfdconnect', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ ip: drive.ip })
+                            }); // Wait for WebSocket update
+                        };
+                    }
+                    driveItem.appendChild(controlBtn);
+                    driveList.appendChild(driveItem);
+                });
+                groupDiv.appendChild(groupTitleContainer);
+                groupDiv.appendChild(driveList);
+                container.appendChild(groupDiv);
+            }
+            document.querySelectorAll(".select-all").forEach(checkbox => {
+                checkbox.addEventListener("change", function () {
+                    let group = this.dataset.group;
+                    let checkboxes = document.querySelectorAll(`.drive-checkbox[data-group='${group}']`);
+                    checkboxes.forEach(cb => { if (!cb.disabled) { cb.checked = this.checked; } });
+                });
+            });
+            document.querySelectorAll(".drive-checkbox").forEach(checkbox => {
+                checkbox.addEventListener("change", function () {
+                    let group = this.dataset.group;
+                    let selectAllCheckbox = document.querySelector(`.select-all[data-group='${group}']`);
+                    let allChecked = Array.from(document.querySelectorAll(`.drive-checkbox[data-group='${group}']`)).every(cb => !cb.disabled && cb.checked);
+                    selectAllCheckbox.checked = allChecked;
+                });
+            });
+        }
+        function updateControlEvents() {
+            fetch('/control-events')
+                .then(response => response.json())
+                .then(events => {
+                    controlEvents = events;
+                    updateControlEventsUI();
+                });
+        }
+        function updateControlEventsUI() {
+            const controlEventsDiv = document.getElementById('control-events');
+            controlEventsDiv.innerHTML = '';
+            controlEvents.slice().reverse().forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'control-event';
+                const timestamp = new Date(event.timestamp);
+                const formattedDate = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')} ${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
+                eventDiv.innerHTML = `
+                    <div>
+                        <span class="timestamp">${formattedDate}</span>
+                        <span class="event-box" style="background-color: #007bff; color: white;">
+                        ${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</span>
+                    </div>
+                    ${event.drives.map(drive => `
+                        <span class="devices-box" style="background-color: ${drive.success ? '#4CAF50' : '#f44336'}; color: white;">${drive.ip}${drive.error ? ` - ${drive.error}` : ''}</span>
+                    `).join('')}
+                `;
+                controlEventsDiv.appendChild(eventDiv);
+            });
+        }
+
+        // === 4. Control Functions ===
+        function sendControl(action, speed = null) {
+            if (action === 'SetSpeed' && (!speed || speed.trim() === '')) {
+                alert('Please enter a speed value');
+                return;
+            }
+            let selectedDrives = Array.from(document.querySelectorAll(".drive-checkbox:checked")).map(cb => cb.dataset.ip);
+            if (selectedDrives.length === 0) return alert("No drives selected.");
+            let body = { drives: selectedDrives, action: action };
+            if (speed) body.speed = parseFloat(speed);
+            fetch('/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(response => response.text())
+        }
+        function quickGroupControl(group, action) {
+            let drives = Array.from(document.querySelectorAll(`.drive-checkbox[data-group='${group}']`)).map(cb => cb.dataset.ip);
+            if (drives.length === 0) return alert("No drives in this group.");
+            let body = { drives: drives, action: action };
+            fetch('/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(response => response.text());
+        }
+        function selectAllDrives() {
+            const selectAllCheckbox = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('.drive-checkbox');
+            checkboxes.forEach(checkbox => { if (!checkbox.disabled) { checkbox.checked = selectAllCheckbox.checked; } });
+        }
+
+        // === 5. Event Listeners and Dark Mode ===
+        document.addEventListener("DOMContentLoaded", function() {
+            const hertzInput = document.getElementById('speed-value');
+            const percentInput = document.getElementById('percent-value');
+            hertzInput.addEventListener('input', function() {
+                const hz = parseFloat(this.value) || 0;
+                percentInput.value = ((hz / 60) * 100).toFixed(1);
+            });
+            percentInput.addEventListener('input', function() {
+                const percent = parseFloat(this.value) || 0;
+                hertzInput.value = ((percent / 100) * 60).toFixed(1);
+            });
+            // Dark mode toggle
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            function setDarkMode(on) {
+                if (on) {
+                    document.body.classList.add('dark-mode');
+                    darkModeToggle.textContent = '💡 Light Mode';
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    darkModeToggle.textContent = '🌙 Dark Mode';
+                }
+            }
+            let darkPref = localStorage.getItem('darkMode') === 'true';
+            setDarkMode(darkPref);
+            darkModeToggle.onclick = function() {
+                darkPref = !darkPref;
+                localStorage.setItem('darkMode', darkPref);
+                setDarkMode(darkPref);
+            };
+            document.getElementById('apiModalBtn').onclick = function() {
+              document.getElementById('apiModal').style.display = 'block';
+            };
+        });
+        setInterval(updateControlEvents, 1000);
+    </script>
 </head>
 <body>
     <div class="container">
-            <div class="header">
-        <h1>
-            <span id="siteName"></span> PDU Control System
-        </h1>
-        <span id="groupLabel" style="display: none;"></span>
-    </div>
-        <div class="control-panel">
-            <div class="control-button-title">PDU Outlets Control</div>
-            <div class="fan-buttons" style="display: flex; align-items: center; gap: 8px;">
-                <div class="button-group" style="display: flex; gap: 4px;">
-                    <button onclick="controlSelectedOutlets(true)" class="start">Turn Outlets On</button>
-                    <button onclick="controlSelectedOutlets(false)" class="stop">Turn Outlets Off</button>
-                </div>
-                <label class="vfd-checkbox" style="margin-left: 12px;">
-                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()"> Select All
-                </label>
-            </div>
-            <button id="darkModeToggle" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer;">🌙 Dark Mode</button>
-            <button id="apiButton" style="position:fixed;bottom:24px;right:32px;z-index:1100;padding:8px 18px;border-radius:6px;border:none;background:#007bff;color:#fff;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:background 0.2s;">🌍 Remote Control API</button>
+        <div class="header">
+            <h1>VFD Control Panel</h1>
         </div>
-
-        <!-- Modal -->
+        <div class="control-panel" style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="fan-buttons"><span class="control-button-title">Fan Controls</span><br>
+                <input type="number" id="speed-value" step=".1" placeholder="Speed (Hz)" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required> <span class="speed-legend">Hz</span>&nbsp;&nbsp;
+                <input type="number" id="percent-value" step=".1" placeholder="Speed (%)" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required> <span class="speed-legend">%</span>&nbsp;&nbsp;
+                <button class="set-speed" tooltip="Sets VFD speed and starts it." onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>&nbsp;&nbsp; | &nbsp;&nbsp;
+                <button class="start" tooltip="Starts the VFD using previously set speed." onclick="sendControl('Start')">Start</button>
+                <button class="stop" tooltip="Stops the VFD." onclick="sendControl('Stop')">Stop</button>
+                <span id="fanhold-button" style="display: none;">
+                    <button class="fanhold" tooltip="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning"onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
+                </span>
+                <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
+            </div>
+            <button id="darkModeToggle" style="margin-left: auto; padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer;">🌙 Dark Mode</button>
+        </div>
+        <button id="apiModalBtn" style="position:fixed;bottom:24px;right:32px;z-index:1100;padding:8px 18px;border-radius:6px;border:none;background:#007bff;color:#fff;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:background 0.2s;">🌍 Remote Control API</button>
         <div id="apiModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
           <div style="background:#fff; margin:5% auto; padding:30px 24px 24px 24px; border-radius:12px; max-width:600px; position:relative; box-shadow:0 4px 32px rgba(0,0,0,0.2); font-size:16px;">
             <button onclick="document.getElementById('apiModal').style.display='none'" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:28px; color:#333; cursor:pointer;">&times;</button>
             <h2 style="margin-top:0;">🌍 Remote Control API</h2>
             <div style="overflow-x:auto; max-width:100%;">
               <div style="margin-bottom:18px;">
-                <b>Control PDU outlets remotely by sending JSON commands to HTTP endpoints.</b><br>
+                <b>Remotely control the VFD server by sending JSON commands to its HTTP endpoints.</b><br>
                 All endpoints are accessible on <code>http://<span class="api-host"></span></code> (as set in your config).
               </div>
-
-              <h3 style="margin-bottom:6px;">🖥️ <b>/api/devices</b> (GET)</h3>
-              <div style="margin-bottom:8px;">Get comprehensive status information for all PDU devices.</div>
+              <h3 style="margin-bottom:6px;">🖥️ <b>/devices</b> (GET)</h3>
+              <div style="margin-bottom:8px;">Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://<span class="api-host"></span>/devices</code></div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"IP": "10.33.30.11",<br>&nbsp;&nbsp;&nbsp;&nbsp;"DriveType": "OptidriveE3",<br>&nbsp;&nbsp;&nbsp;&nbsp;"Group": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanNumber": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanDesc": "1x 1800RPM 29.5kCFM",<br>&nbsp;&nbsp;&nbsp;&nbsp;"RpmHz": 30,<br>&nbsp;&nbsp;&nbsp;&nbsp;"CfmRpm": 16.38888888,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Port": 502,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Unit": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"setSpeed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualSpeed": 44.8,<br>&nbsp;&nbsp;&nbsp;&nbsp;"rpmSpeed": 1344,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualCfm": 22000,<br>&nbsp;&nbsp;&nbsp;&nbsp;"current": 8.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;"status": "Running",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastUpdated": 1718030000<br>&nbsp;&nbsp;&nbsp;&nbsp;// ... other live fields ...<br>&nbsp;&nbsp;}<br>]</code>
+              </div>
+              <div style="margin-bottom:18px;">Returns an array of objects, each containing both static config and live data for every drive.</div>
+              <h3 style="margin-bottom:6px;">🔗 <b>/control</b> (POST)</h3>
+              <div style="margin-bottom:8px;">Remotely start, stop, set speed, or hold fans.<br>Accepts a JSON payload with the following elements:</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:14px; margin-bottom:8px;">
+                <code>{<br>&nbsp;&nbsp;"drives": ["10.33.30.11", "10.33.30.12"],<br>&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;"speed": 45.0<br>}</code>
+              </div>
+              <div style="margin-bottom:8px;">Query Elements:</div>
+              <ul style="font-size:14px; margin-bottom:8px;">
+                <li><b>drives</b>: Array of VFD IPs to control</li>
+                <li><b>action</b>: Control action (see below)</li>
+                <li><b>speed</b>: Frequency in Hz for SetSpeed action only (Optional)</li>
+              </ul>
+              </div>
+              <div style="margin-bottom:8px;">Actions:</div>
+              <ul style="font-size:14px; margin-bottom:8px;">
+                <li>▶️ <b>Start</b>: Start the selected drives</li>
+                <li>⏹️ <b>Stop</b>: Stop the selected drives</li>
+                <li>🛑 <b>Fanhold</b>: Set speed to 0 Hz but keep drive enabled</li>
+                <li>𖣘 <b>Freespin</b>: Alias for Stop (let fan coast)</li>
+                <li>⏲ <b>SetSpeed</b>: Set the speed (Hz) and start the drive</li>
+              </ul>
+              <div style="margin-bottom:8px;">Example <b>curl</b> command:</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl http://<span class="api-host"></span>/devices</code>
+                <code>curl -X POST http://<span class="api-host"></span>/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
-                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"ip": "10.0.0.100",<br>&nbsp;&nbsp;&nbsp;&nbsp;"location": "Server Room A",<br>&nbsp;&nbsp;&nbsp;&nbsp;"type": "Orient-12",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastSeen": "2025-08-01T12:00:00Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"health": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"healthy": true,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"lastError": ""<br>&nbsp;&nbsp;&nbsp;&nbsp;},<br>&nbsp;&nbsp;&nbsp;&nbsp;"phases": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"phase1": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"voltage": 220.5,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"current": 10.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"power": 2250.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"powerFactor": 0.95,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"energyKWh": 1250.5<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;},<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"phase2": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"voltage": 220.5,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"current": 10.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"power": 2250.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"powerFactor": 0.95,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"energyKWh": 1250.5<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;},<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"phase3": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"voltage": 220.5,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"current": 10.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"power": 2250.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"powerFactor": 0.95,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"energyKWh": 1250.5<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;&nbsp;&nbsp;},<br>&nbsp;&nbsp;&nbsp;&nbsp;"outlets": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"number": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"powered": true,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"currentAmps": 2.5<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
-              </div>
-              <div style="margin-bottom:8px;">Response Fields:</div>
-              <ul style="font-size:14px; margin-bottom:8px;">
-                <li><b>ip</b>: IP address of the PDU</li>
-                <li><b>location</b>: Physical location name</li>
-                <li><b>type</b>: PDU model type</li>
-                <li><b>lastSeen</b>: Last successful communication timestamp</li>
-                <li><b>health</b>: Device health status and any error information</li>
-                <li><b>phases</b>: Detailed metrics for each phase including voltage, current, power factor, and energy consumption</li>
-                <li><b>outlets</b>: Array of outlet statuses with power state and current draw</li>
-              </ul>
-              <div style="margin-bottom:8px;">Returns an array of objects, each containing both static config and live data for every PDU.</div>
-              <h3 style="margin-bottom:6px;">🔌 <b>/api/outlet/control</b> (POST)</h3>
-              <div style="margin-bottom:8px;">Control a single outlet on a specific PDU. Perfect for individual outlet management.</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
-                <code>{<br>&nbsp;&nbsp;"ip": "10.0.0.100",<br>&nbsp;&nbsp;"outlet": 1,<br>&nbsp;&nbsp;"action": "on"<br>}</code>
-              </div>
-              <div style="margin-bottom:8px;">Request Fields:</div>
-              <ul style="font-size:14px; margin-bottom:8px;">
-                <li><b>ip</b>: IP address of the target PDU</li>
-                <li><b>outlet</b>: Outlet number to control (1-12)</li>
-                <li><b>action</b>: "on" to power on, "off" to power off</li>
-              </ul>
-              <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> or detailed error message</div>
+              <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</div>
 
-              <h3 style="margin-bottom:6px;">⚡ <b>/api/outlet/bulk-control</b> (POST)</h3>
-              <div style="margin-bottom:8px;">Control multiple PDUs at once. Useful for coordinated power management.</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
-                <code>{<br>&nbsp;&nbsp;"pdus": ["10.0.0.100", "10.0.0.101"],<br>&nbsp;&nbsp;"action": "on",<br>&nbsp;&nbsp;"allPorts": true<br>}</code>
-              </div>
-              <div style="margin-bottom:8px;">Request Fields:</div>
-              <ul style="font-size:14px; margin-bottom:8px;">
-                <li><b>pdus</b>: Array of PDU IP addresses to control</li>
-                <li><b>action</b>: "on" or "off" to control power state</li>
-                <li><b>allPorts</b>: true to affect all outlets on each PDU</li>
-              </ul>
-              <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> or error details</div>
-
-              <h3 style="margin-bottom:6px;">📊 <b>/api/control-events</b> (GET)</h3>
+              <h3 style="margin-bottom:6px;">📜 <b>/control-events</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of recent control events (for audit/logging).</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
                 <code>curl http://<span class="api-host"></span>/control-events</code>
               </div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
-                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2025-08-01T12:00:00Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"pdus": ["10.0.0.100"],<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "Turn On",<br>&nbsp;&nbsp;&nbsp;&nbsp;"success": true,<br>&nbsp;&nbsp;&nbsp;&nbsp;"error": null<br>&nbsp;&nbsp;}<br>]</code>
+                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2024-06-10T12:34:56Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;&nbsp;&nbsp;"speed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"drives": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.11", "success": true },<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.12", "success": false, "error": "Tripped" }<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
+              </div>
+
+              <h3 style="margin-bottom:6px;">🔌 <b>/vfdconnect</b> (POST)</h3>
+              <div style="margin-bottom:8px;">Connect or disconnect a VFD by IP. Used by the UI to reconnect or disconnect a drive. This is merely a toggle, so invoking this does not specify whether to turn it on or off, it just change it's status.</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>{ "ip": "10.33.30.11" }</code>
+              </div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>curl -X POST http://<span class="api-host"></span>/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
               </div>
             </div>
           </div>
         </div>
-
         <div class="drives-box">
-            <div id="pdu-container" class="drives-panel"></div>
+            <div id="drive-container" class="drives-panel"></div>
             <div class="control-events-panel">
                 <h2>Control Events</h2>
                 <div id="control-events"></div>
             </div>
         </div>
     </div>
-
-    <script>
-        function updateControlEvents() {
-            fetch('/api/control-events')
-                .then(response => response.json())
-                .then(events => {
-                    const controlEventsDiv = document.getElementById('control-events');
-                    controlEventsDiv.innerHTML = '';
-                    events.slice().reverse().forEach(event => {
-                        const eventDiv = document.createElement('div');
-                        eventDiv.className = 'control-event';
-                        
-                        // Format timestamp
-                        const timestamp = new Date(event.timestamp);
-                        const formattedDate = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')} ${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
-                        
-                        // Create header with timestamp and action
-                        const headerDiv = document.createElement('div');
-                        headerDiv.className = 'event-header';
-                        headerDiv.style.display = 'flex';
-                        headerDiv.style.alignItems = 'center';
-                        headerDiv.style.gap = '8px';
-                        headerDiv.innerHTML = `
-                            <span class="timestamp">${formattedDate}</span>
-                            <span class="event-box" style="background-color: #007bff; color: white;">${event.action}</span>
-                        `;
-                        eventDiv.appendChild(headerDiv);
-
-                        // Create container for PDU boxes with some spacing
-                        const pduContainer = document.createElement('div');
-                        pduContainer.style.marginTop = '4px';
-                        pduContainer.style.display = 'flex';
-                        pduContainer.style.flexWrap = 'wrap';
-                        pduContainer.style.gap = '4px';
-
-                        // Handle PDU display
-                        console.log('Event:', event); // Debug log
-                        
-                        if (event.pdus && Array.isArray(event.pdus)) {
-                            // Check if this is a group-wide operation
-                            const groupMatch = event.action.match(/^(.*?) All PDUs/);
-                            if (groupMatch) {
-                                // This is a group-wide operation, just show the group description
-                                pduContainer.innerHTML = `
-                                    <span class="devices-box" style="background-color: #4CAF50; color: white;">
-                                        ${groupMatch[1]} > All Devices
-                                    </span>`;
-                            } else {
-                                // Show individual PDUs
-                                event.pdus.forEach(pduIP => {
-                                    pduContainer.innerHTML += `
-                                        <span class="devices-box" style="background-color: #4CAF50; color: white;">
-                                            ${typeof pduIP === 'string' ? pduIP : pduIP.ip || pduIP.IP}
-                                        </span>`;
-                                });
-                            }
-                        } else if (event.PDUs && Array.isArray(event.PDUs)) {
-                            // Alternate PDUs field name
-                            event.PDUs.forEach(pduIP => {
-                                pduContainer.innerHTML += `
-                                    <span class="devices-box" style="background-color: #4CAF50; color: white;">
-                                        ${typeof pduIP === 'string' ? pduIP : pduIP.ip || pduIP.IP}
-                                    </span>`;
-                            });
-                        } else if (event.pdu || event.PDU) {
-                            // Single PDU operation
-                            const pduIP = event.pdu || event.PDU;
-                            pduContainer.innerHTML = `
-                                <span class="devices-box" style="background-color: #4CAF50; color: white;">
-                                    ${typeof pduIP === 'string' ? pduIP : pduIP.ip || pduIP.IP}
-                                </span>`;
-                        }
-
-                        // Add error message if present
-                        if (event.error) {
-                            pduContainer.innerHTML += `
-                                <span class="devices-box" style="background-color: #f44336; color: white;">
-                                    ${event.error}
-                                </span>`;
-                        }
-
-                        eventDiv.appendChild(pduContainer);
-                        controlEventsDiv.appendChild(eventDiv);
-                    });
-                });
-        }
-
-        function formatPower(powerInWatts) {
-            const powerInKW = powerInWatts / 1000;
-            if (powerInKW >= 1000) {
-                return `${(powerInKW/1000).toFixed(2)} MW`;
-            }
-            return `${powerInKW.toFixed(1)} kW`;
-        }
-
-        let expandedGroups = JSON.parse(localStorage.getItem("expandedGroups")) || {};
-        if (Object.keys(expandedGroups).length === 0) {
-            expandedGroups = new Proxy({}, { get: () => true });
-        }
-
-        function updatePDUs(pdus) {
-            const container = document.getElementById('pdu-container');
-            container.innerHTML = '';
-            
-            const groups = {};
-            for (const [ip, pdu] of Object.entries(pdus)) {
-                const groupName = pdu.Location.split('/')[0];
-                if (!groups[groupName]) groups[groupName] = [];
-                groups[groupName].push({ ip, ...pdu });
-            }
-            
-            for (const [groupName, groupPdus] of Object.entries(groups)) {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'group';
-
-                const totalPower = groupPdus.reduce((sum, pdu) => {
-                    return sum + (pdu.Metrics.Phase1.Power + pdu.Metrics.Phase2.Power + pdu.Metrics.Phase3.Power) / 1000;
-                }, 0);
-
-                const groupTitleContainer = document.createElement('div');
-                groupTitleContainer.className = 'group-title-container';
-                
-                const groupTitle = document.createElement('div');
-                groupTitle.className = 'group-title';
-                groupTitle.setAttribute('data-group', groupName);
-                const powerDisplay = totalPower >= 1000 ? 
-                    `${(totalPower/1000).toFixed(2)} MW` : 
-                    `${totalPower.toFixed(1)} kW`;
-                // Get the group label from the header (which was set by app-config), fallback to empty string if not set
-                const groupLabel = document.getElementById('groupLabel')?.textContent || '';
-                groupTitle.innerHTML = `${groupLabel} ${groupName} &nbsp;>>&nbsp; Total Power <span class="status-box blue totalpower">${powerDisplay}</span>`;
-                let controlsContainer = document.createElement("div");
-                controlsContainer.style.display = "flex";
-                controlsContainer.style.alignItems = "center";
-                controlsContainer.style.whiteSpace = "nowrap";
-                controlsContainer.style.marginLeft = "10px";
-                controlsContainer.style.gap = "8px";
-
-                let quickButtons = document.createElement("div");
-                quickButtons.style.display = "flex";
-                quickButtons.style.gap = "4px";
-                    quickButtons.innerHTML = 
-                        '<button class="quickbutton green" onclick="controlSelectedOutlets(true, \'' + groupName + '\')">On</button>' +
-                        '<button class="quickbutton orange" onclick="controlSelectedOutlets(false, \'' + groupName + '\')">Off</button>';                let selectAllDiv = document.createElement("div");
-                const selectAllChecked = groupPdus.every(pdu => document.querySelector(`.pdu-checkbox[data-ip="${pdu.ip}"]`)?.checked);
-                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-group="${groupName}" ${selectAllChecked ? 'checked' : ''}> Select All`;
-
-                controlsContainer.appendChild(quickButtons);
-                controlsContainer.appendChild(selectAllDiv);
-
-                groupTitleContainer.appendChild(groupTitle);
-                groupTitleContainer.appendChild(controlsContainer);
-
-                const pduList = document.createElement('div');
-                pduList.className = 'drive-list';
-                pduList.style.display = expandedGroups[groupName] ? 'block' : 'none';
-
-                groupTitle.addEventListener('click', () => {
-                    pduList.style.display = pduList.style.display === 'none' ? 'block' : 'none';
-                    expandedGroups[groupName] = pduList.style.display === 'block';
-                    localStorage.setItem('expandedGroups', JSON.stringify(expandedGroups));
-                });
-
-                let groupPduCounter = 1;
-                for (const pdu of groupPdus) {
-                    const card = document.createElement('div');
-                    card.className = `pdu-card ${pdu.Status.Healthy ? '' : 'unhealthy'}`;
-                    card.setAttribute('data-ip', pdu.IP);
-
-                    const avgVoltage = (pdu.Metrics.Phase1.Voltage + pdu.Metrics.Phase2.Voltage + pdu.Metrics.Phase3.Voltage) / 3;
-
-                    card.innerHTML = 
-                        '<input type="checkbox" class="pdu-checkbox" data-ip="' + pdu.ip + '" data-group="' + groupName + '">&nbsp;' +
-                        'PDU #' + groupPduCounter++ + '&nbsp;' +
-                        '<span class="status-box inform">[' + pdu.Location + ']</span>&nbsp;' +
-                        '<span class="pdu-ip"><a href="http://' + pdu.IP + '" target="_blank">' + pdu.IP + '</a></span>' +
-                        '⚡<span class="category"> Input > </span>' +
-                        '<div class="phase-box voltage" style="width: 190px;">' +
-                        '<div class="value">' + (pdu.Metrics.Phase1.Voltage || 0).toFixed(1) + 'V | ' + (pdu.Metrics.Phase2.Voltage || 0).toFixed(1) + 'V | ' + (pdu.Metrics.Phase3.Voltage || 0).toFixed(1) + 'V</div>' +
-                        '</div>' +
-                        '<div class="phase-box amperage" style="width: 165px;">' +
-                        '<div class="value">' + (pdu.Metrics.Phase1.Current || 0).toFixed(1) + 'A | ' + (pdu.Metrics.Phase2.Current || 0).toFixed(1) + 'A | ' + (pdu.Metrics.Phase3.Current || 0).toFixed(1) + 'A</div>' +
-                        '</div>' +
-                        '<div class="phase-box wattage" style="width: 70px;">' +
-                        '<div class="value">' + (((pdu.Metrics.Phase1.Power || 0) + (pdu.Metrics.Phase2.Power || 0) + (pdu.Metrics.Phase3.Power || 0)) / 1000).toFixed(1) + ' kW</div>' +
-                        '</div>' +
-                        '⚡<span class="category"> Output > </span>' +
-                        '<div class="outlets-container">' +
-                        '<div class="outlets">' +
-                        Array(pdu.OutletCount || 0).fill(0).map((_, index) => {
-                            if (!pdu.Metrics.Outlets || !pdu.Metrics.Outlets[index]) {
-                                return '<div class="outlet grey" style="cursor: not-allowed">' +
-                                       '<span class="power">0.0 kW</span>' +
-                                       '</div>';
-                            }
-                            const outlet = pdu.Metrics.Outlets[index];
-                            return '<div class="outlet ' + (outlet.Status ? 'on' : 'off') + '"' +
-                                   ' onclick="toggleOutlet(\'' + pdu.IP + '\', ' + (index + 1) + ')"' +
-                                   ' title="Click to toggle">' +
-                                   '<span class="power">' + ((outlet.Current * avgVoltage) / 1000).toFixed(1) + ' kW</span>' +
-                                   '</div>';
-                        }).join('') +
-                        '</div>' +
-                        ((!pdu.Metrics.Outlets || pdu.Metrics.Outlets.every(o => o === null) || 
-                          (pdu.Metrics.Phase1.Voltage === 0 && pdu.Metrics.Phase2.Voltage === 0 && pdu.Metrics.Phase3.Voltage === 0)) ? 
-                            '<div class="outlets-overlay">Loading backend data&nbsp; <i class="fa fa-spinner fa-spin"></i></div>' : '') +
-                        '</div>' +
-                        '<div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">' +
-                        '<span class="category"> PDU Health > </span>' +
-                        '<span class="status-box ' + (pdu.Status.Healthy ? 'healthy' : 'error') + '">' +
-                        (pdu.Status.Healthy ? '<i class="fas fa-check"></i>' : '<i class="fas fa-exclamation-triangle"></i>') +
-                        '</span>' +
-                        (pdu.Status.LastError ? 
-                            '<span class="status-box error">' +
-                            '<i class="fas fa-exclamation-circle"></i> ' + pdu.Status.LastError +
-                            '</span>' : 
-                            '')
-                    pduList.appendChild(card);
-                }
-
-                groupDiv.appendChild(groupTitleContainer);
-                groupDiv.appendChild(pduList);
-                container.appendChild(groupDiv);
-            }
-
-            document.querySelectorAll(".select-all").forEach(checkbox => {
-                checkbox.addEventListener("change", function() {
-                    const group = this.dataset.group;
-                    const checkboxes = document.querySelectorAll(`.pdu-checkbox[data-group='${group}']`);
-                    checkboxes.forEach(cb => cb.checked = this.checked);
-                });
-            });
-
-            document.querySelectorAll(".pdu-checkbox").forEach(checkbox => {
-                checkbox.addEventListener("change", function() {
-                    const group = this.dataset.group;
-                    const selectAllCheckbox = document.querySelector(`.select-all[data-group='${group}']`);
-                    const groupCheckboxes = document.querySelectorAll(`.pdu-checkbox[data-group='${group}']`);
-                    selectAllCheckbox.checked = Array.from(groupCheckboxes).every(cb => cb.checked);
-                });
-            });
-        }
-
-        function toggleSelectAll() {
-            const selectAllCheckbox = document.getElementById('selectAll');
-            document.querySelectorAll('.pdu-checkbox').forEach(checkbox => {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
-            document.querySelectorAll('.select-all').forEach(checkbox => {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
-        }
-
-        async function toggleOutlet(pduIP, outletIndex) {
-            // Get current outlet status
-            const pduCard = document.querySelector(`.pdu-card[data-ip="${pduIP}"]`);
-            const outlet = pduCard.querySelectorAll('.outlet')[outletIndex - 1];
-            const currentStatus = outlet.classList.contains('on');
-            
-            try {
-                const response = await fetch('/api/outlet/control', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ip: pduIP,
-                        outlet: outletIndex,
-                        action: currentStatus ? 'off' : 'on'
-                    })
-                });
-
-                if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(error);
-                }
-
-                // Update will come through WebSocket
-                updateControlEvents();
-            } catch (error) {
-                alert(`Failed to control outlet: ${error.message}`);
-            }
-        }
-
-        async function controlSelectedOutlets(turnOn, groupName = null) {
-            const selector = groupName ? `.pdu-checkbox[data-group="${groupName}"]:checked` : '.pdu-checkbox:checked';
-            const selectedPDUs = Array.from(document.querySelectorAll(selector)).map(cb => cb.dataset.ip);
-            if (selectedPDUs.length === 0) {
-                alert('Please select at least one PDU');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/outlet/bulk-control', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        pdus: selectedPDUs,
-                        action: turnOn ? 'on' : 'off',
-                        allPorts: true
-                    })
-                });
-
-                if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(error);
-                }
-
-                // Update will come through WebSocket
-                updateControlEvents();
-            } catch (error) {
-                alert(`Failed to control outlets: ${error.message}`);
-            }
-        }
-
-        let ws;
-        let initialUIBuilt = false;
-        let lastPDUState = {};
-
-        function updatePDUValues(pdus) {
-            for (const [ip, pdu] of Object.entries(pdus)) {
-                const card = document.querySelector(`.pdu-card[data-ip="${ip}"]`);
-                if (!card) continue;
-
-                // Update health status
-                const healthStatus = card.querySelector('.status-box:not(.inform)');
-                if (healthStatus) {
-                    healthStatus.className = `status-box ${pdu.Status.Healthy ? 'healthy' : 'error'}`;
-                    healthStatus.innerHTML = pdu.Status.Healthy ? 
-                        '<i class="fas fa-check"></i>' : 
-                        '<i class="fas fa-exclamation-triangle"></i>';
-                }
-
-                // Update phase values
-                const [voltagePhase, currentPhase, powerPhase] = card.querySelectorAll('.phase-box');
-                if (voltagePhase && currentPhase && powerPhase) {
-                    voltagePhase.querySelector('.value').textContent = 
-                        (pdu.Metrics.Phase1.Voltage || 0).toFixed(1) + 'V | ' + 
-                        (pdu.Metrics.Phase2.Voltage || 0).toFixed(1) + 'V | ' + 
-                        (pdu.Metrics.Phase3.Voltage || 0).toFixed(1) + 'V';
-                    
-                    currentPhase.querySelector('.value').textContent = 
-                        (pdu.Metrics.Phase1.Current || 0).toFixed(1) + 'A | ' + 
-                        (pdu.Metrics.Phase2.Current || 0).toFixed(1) + 'A | ' + 
-                        (pdu.Metrics.Phase3.Current || 0).toFixed(1) + 'A';
-                    
-                    powerPhase.querySelector('.value').textContent = 
-                        (((pdu.Metrics.Phase1.Power || 0) + 
-                          (pdu.Metrics.Phase2.Power || 0) + 
-                          (pdu.Metrics.Phase3.Power || 0)) / 1000).toFixed(1) + ' kW';
-                }
-
-                // Update outlets
-                const avgVoltage = (pdu.Metrics.Phase1.Voltage + pdu.Metrics.Phase2.Voltage + pdu.Metrics.Phase3.Voltage) / 3;
-                const outlets = card.querySelectorAll('.outlet');
-                
-                // Get the actual number of outlets from PDU properties
-                const expectedOutletCount = pdu.OutletCount || (pdu.Metrics.Outlets ? pdu.Metrics.Outlets.length : 0);
-                
-                // If we need to update the outlet elements (wrong number of outlets displayed)
-                if (outlets.length !== expectedOutletCount) {
-                    const outletsContainer = card.querySelector('.outlets');
-                    outletsContainer.innerHTML = Array(expectedOutletCount).fill(0).map(() => 
-                        '<div class="outlet grey" style="cursor: not-allowed">' +
-                        '<span class="power">Loading...</span>' +
-                        '</div>'
-                    ).join('');
-                }
-                
-                // Get fresh reference to outlets after possible rebuild
-                const currentOutlets = card.querySelectorAll('.outlet');
-                const outletsContainer = card.querySelector('.outlets-container');
-                
-                const isLoading = !pdu.Metrics.Outlets || pdu.Metrics.Outlets.every(o => o === null) ||
-                    (pdu.Metrics.Phase1.Voltage === 0 && pdu.Metrics.Phase2.Voltage === 0 && pdu.Metrics.Phase3.Voltage === 0);
-                
-                // Update overlay visibility
-                let overlay = outletsContainer.querySelector('.outlets-overlay');
-                if (isLoading) {
-                    // Show loading state
-                    currentOutlets.forEach(outlet => {
-                        outlet.className = 'outlet grey';
-                        outlet.style.cursor = 'not-allowed';
-                        outlet.querySelector('.power').textContent = '0.0 kW';
-                    });
-                    
-                    if (!overlay) {
-                        overlay = document.createElement('div');
-                        overlay.className = 'outlets-overlay';
-                        overlay.style.color = '#333'; // Ensure text is visible in light mode
-                        overlay.innerHTML = 'Loading backend data&nbsp; <i class="fa fa-spinner fa-spin" style="color: #333;"></i>';
-                        outletsContainer.appendChild(overlay);
-                    }
-                } else {
-                    // Remove loading state
-                    if (overlay) {
-                        overlay.remove();
-                    }
-                    
-                    pdu.Metrics.Outlets.forEach((outlet, index) => {
-                        if (currentOutlets[index]) {
-                            currentOutlets[index].className = `outlet ${outlet.Status ? 'on' : 'off'}`;
-                            currentOutlets[index].style.cursor = 'pointer';
-                            currentOutlets[index].querySelector('.power').textContent = 
-                                `${((outlet.Current * avgVoltage) / 1000).toFixed(1)} kW`;
-                        }
-                    });
-                }
-
-                // Update error message if present
-                const errorSpan = card.querySelector('.status-box.error:last-child');
-                if (pdu.Status.LastError) {
-                    if (errorSpan) {
-                        errorSpan.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${pdu.Status.LastError}`;
-                    } else {
-                        const newErrorSpan = document.createElement('span');
-                        newErrorSpan.className = 'status-box error';
-                        newErrorSpan.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${pdu.Status.LastError}`;
-                        card.appendChild(newErrorSpan);
-                    }
-                } else if (errorSpan) {
-                    errorSpan.remove();
-                }
-
-                // Update total power for the group
-                const groupName = pdu.Location.split('/')[0];
-                const group = document.querySelector(`.group-title[data-group="${groupName}"]`);
-                if (group) {
-                    const pdusInGroup = Object.values(pdus).filter(p => p.Location.split('/')[0] === groupName);
-                    const totalPower = pdusInGroup.reduce((sum, p) => {
-                        return sum + (p.Metrics.Phase1.Power + p.Metrics.Phase2.Power + p.Metrics.Phase3.Power) / 1000;
-                    }, 0);
-                    const powerSpan = group.querySelector('.status-box.blue');
-                    if (powerSpan) {
-                        const powerDisplay = totalPower >= 1000 ? 
-                        `${(totalPower/1000).toFixed(2)} MW` : 
-                        `${totalPower.toFixed(1)} kW`;
-                    powerSpan.textContent = powerDisplay;
-                    }
-                }
-            }
-        }
-
-        // Load app configuration once at startup
-        async function loadAppConfig() {
-            try {
-                const response = await fetch('/api/app-config');
-                const config = await response.json();
-                const siteName = config.siteName;
-                // Update the site name in the header
-                document.getElementById('siteName').textContent = siteName;
-                // Update the page title
-                document.title = `${siteName} PDU Control Panel`;
-                if (config.groupLabel) {
-                    document.getElementById('groupLabel').textContent = config.groupLabel;
-                }
-            } catch (error) {
-                console.error('Failed to load app config:', error);
-            }
-        }
-
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-            
-            ws.onmessage = (event) => {
-                const pdus = JSON.parse(event.data);
-                
-                if (!initialUIBuilt) {
-                    updatePDUs(pdus);
-                    initialUIBuilt = true;
-                    lastPDUState = pdus;
-                } else {
-                    updatePDUValues(pdus);
-                    lastPDUState = pdus;
-                }
-            };
-
-            ws.onclose = () => {
-                console.log('WebSocket closed. Reconnecting in 5s...');
-                setTimeout(connectWebSocket, 5000);
-            };
-        }
-
-        // Control Events Functions
-        function updateControlEvents() {
-            fetch('/api/control-events')
-                .then(response => response.json())
-                .then(events => {
-                    const controlEventsDiv = document.getElementById('control-events');
-                    controlEventsDiv.innerHTML = '';
-                    events.slice().reverse().forEach(event => {
-                        const eventDiv = document.createElement('div');
-                        eventDiv.className = 'control-event';
-                        const timestamp = new Date(event.timestamp);
-                        const formattedDate = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')} ${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
-                        
-                        // Create header with timestamp and action
-                        const headerDiv = document.createElement('div');
-                        headerDiv.className = 'event-header';
-                        headerDiv.style.display = 'flex';
-                        headerDiv.style.alignItems = 'center';
-                        headerDiv.style.gap = '8px';
-                        headerDiv.innerHTML = `
-                            <span class="timestamp">${formattedDate}</span>
-                            <span class="event-box" style="background-color: #007bff; color: white;">${event.action}</span>
-                        `;
-                        eventDiv.appendChild(headerDiv);
-
-                        // Create container for PDU boxes with some spacing
-                        const pduContainer = document.createElement('div');
-                        pduContainer.style.marginTop = '4px';
-                        pduContainer.style.display = 'flex';
-                        pduContainer.style.flexWrap = 'wrap';
-                        pduContainer.style.gap = '4px';
-
-                        if (event.pdus && Array.isArray(event.pdus)) {
-                            // Check if this is a group-wide operation
-                            const groupMatch = event.action.match(/(.*?) All PDUs/);
-                            if (groupMatch) {
-                                // This is a group-wide operation, just show the group description
-                                pduContainer.innerHTML = `
-                                    <span class="devices-box" style="background-color: ${event.success ? '#4CAF50' : '#f44336'}; color: white;">
-                                        ${groupMatch[1]} All Devices
-                                    </span>`;
-                            } else {
-                                // Show individual PDUs
-                                event.pdus.forEach(pdu => {
-                                    pduContainer.innerHTML += `
-                                        <span class="devices-box" style="background-color: ${event.success ? '#4CAF50' : '#f44336'}; color: white;">
-                                            ${pdu}
-                                        </span>`;
-                                });
-                            }
-                        } else if (event.pdu) {
-                            // Single PDU operation
-                            pduContainer.innerHTML = `
-                                <span class="devices-box" style="background-color: ${event.success ? '#4CAF50' : '#f44336'}; color: white;">
-                                    IP ${event.pdu}
-                                </span>`;
-                        }
-
-                        // Add error message if present
-                        if (event.error) {
-                            pduContainer.innerHTML += `
-                                <span class="devices-box" style="background-color: #f44336; color: white;">
-                                    ${event.error}
-                                </span>`;
-                        }
-
-                        eventDiv.appendChild(pduContainer);
-                        controlEventsDiv.appendChild(eventDiv);
-                    });
-                });
-        }
-
-        document.addEventListener("DOMContentLoaded", function() {
-            // Set API host
-            const protocol = window.location.protocol;
-            const hostname = window.location.hostname;
-            const port = window.location.port;
-            const apiHost = hostname + (port ? ':' + port : '');
-            document.querySelectorAll('.api-host').forEach(el => {
-                el.textContent = apiHost;
-            });
-
-            // Setup dark mode toggle
-            const darkModeToggle = document.getElementById('darkModeToggle');
-            const setDarkMode = (enabled) => {
-                if (enabled) {
-                    document.body.classList.add('dark-mode');
-                    darkModeToggle.textContent = '💡 Light Mode';
-                    localStorage.setItem('darkMode', 'true');
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    darkModeToggle.textContent = '🌙 Dark Mode';
-                    localStorage.setItem('darkMode', 'false');
-                }
-            };
-
-            // Check for saved dark mode preference
-            const darkModePref = localStorage.getItem('darkMode') === 'true';
-            setDarkMode(darkModePref);
-
-            // Add click handler for dark mode toggle
-            darkModeToggle.addEventListener('click', () => {
-                setDarkMode(!document.body.classList.contains('dark-mode'));
-            });
-
-            // Load app config first, then connect websocket
-            loadAppConfig().then(() => {
-                connectWebSocket();
-                // Start updating control events
-                updateControlEvents();
-                setInterval(updateControlEvents, 1000);
-            });
-            
-            // Modal functionality
-            const modal = document.getElementById('apiModal');
-            const apiBtn = document.getElementById('apiButton');
-            const closeBtn = document.querySelector('.close');
-
-            apiBtn.onclick = function() {
-                modal.style.display = "block";
-            }
-
-            closeBtn.onclick = function() {
-                modal.style.display = "none";
-            }
-
-            window.onclick = function(event) {
-                if (event.target == modal) {
-                    modal.style.display = "none";
-                }
-            }
-        });
-    </script>
 </body>
 </html>
