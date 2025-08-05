@@ -106,7 +106,7 @@
         let controlEvents = [];
 
         // === 2. App Config and WebSocket Setup ===
-        fetch('/app-config')
+        fetch('/api/app-config')
         .then(r => r.json())
         .then(cfg => {
             if (cfg.siteName) siteName = cfg.siteName;
@@ -267,7 +267,7 @@
                         controlBtn.style.backgroundColor = '#4CAF50';
                         controlBtn.onclick = function() {
                             controlBtn.disabled = true;
-                            fetch('/vfdconnect', {
+                            fetch('/api/vfdconnect', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ ip: drive.ip })
@@ -278,7 +278,7 @@
                         controlBtn.style.backgroundColor = '#f44336';
                         controlBtn.onclick = function() {
                             controlBtn.disabled = true;
-                            fetch('/vfdconnect', {
+                            fetch('/api/vfdconnect', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ ip: drive.ip })
@@ -309,7 +309,7 @@
             });
         }
         function updateControlEvents() {
-            fetch('/control-events')
+            fetch('/api/control-events')
                 .then(response => response.json())
                 .then(events => {
                     controlEvents = events;
@@ -348,7 +348,7 @@
             if (selectedDrives.length === 0) return alert("No drives selected.");
             let body = { drives: selectedDrives, action: action };
             if (speed) body.speed = parseFloat(speed);
-            fetch('/control', {
+            fetch('/api/control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -358,7 +358,7 @@
             let drives = Array.from(document.querySelectorAll(`.drive-checkbox[data-group='${group}']`)).map(cb => cb.dataset.ip);
             if (drives.length === 0) return alert("No drives in this group.");
             let body = { drives: drives, action: action };
-            fetch('/control', {
+            fetch('/api/control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -436,14 +436,14 @@
                 <b>Remotely control the VFD server by sending JSON commands to its HTTP endpoints.</b><br>
                 All endpoints are accessible on <code>http://<span class="api-host"></span></code> (as set in your config).
               </div>
-              <h3 style="margin-bottom:6px;">🖥️ <b>/devices</b> (GET)</h3>
+              <h3 style="margin-bottom:6px;">🖥️ <b>/api/devices</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://<span class="api-host"></span>/devices</code></div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://<span class="api-host"></span>/api/devices</code></div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
                 <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"IP": "10.33.30.11",<br>&nbsp;&nbsp;&nbsp;&nbsp;"DriveType": "OptidriveE3",<br>&nbsp;&nbsp;&nbsp;&nbsp;"Group": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanNumber": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanDesc": "1x 1800RPM 29.5kCFM",<br>&nbsp;&nbsp;&nbsp;&nbsp;"RpmHz": 30,<br>&nbsp;&nbsp;&nbsp;&nbsp;"CfmRpm": 16.38888888,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Port": 502,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Unit": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"setSpeed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualSpeed": 44.8,<br>&nbsp;&nbsp;&nbsp;&nbsp;"rpmSpeed": 1344,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualCfm": 22000,<br>&nbsp;&nbsp;&nbsp;&nbsp;"current": 8.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;"status": "Running",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastUpdated": 1718030000<br>&nbsp;&nbsp;&nbsp;&nbsp;// ... other live fields ...<br>&nbsp;&nbsp;}<br>]</code>
               </div>
               <div style="margin-bottom:18px;">Returns an array of objects, each containing both static config and live data for every drive.</div>
-              <h3 style="margin-bottom:6px;">🔗 <b>/control</b> (POST)</h3>
+              <h3 style="margin-bottom:6px;">🔗 <b>/api/control</b> (POST)</h3>
               <div style="margin-bottom:8px;">Remotely start, stop, set speed, or hold fans.<br>Accepts a JSON payload with the following elements:</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:14px; margin-bottom:8px;">
                 <code>{<br>&nbsp;&nbsp;"drives": ["10.33.30.11", "10.33.30.12"],<br>&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;"speed": 45.0<br>}</code>
@@ -465,26 +465,26 @@
               </ul>
               <div style="margin-bottom:8px;">Example <b>curl</b> command:</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl -X POST http://<span class="api-host"></span>/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
+                <code>curl -X POST http://<span class="api-host"></span>/api/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
               </div>
               <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</div>
 
-              <h3 style="margin-bottom:6px;">📜 <b>/control-events</b> (GET)</h3>
+              <h3 style="margin-bottom:6px;">📜 <b>/api/control-events</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of recent control events (for audit/logging).</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl http://<span class="api-host"></span>/control-events</code>
+                <code>curl http://<span class="api-host"></span>/api/control-events</code>
               </div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
                 <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2024-06-10T12:34:56Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;&nbsp;&nbsp;"speed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"drives": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.11", "success": true },<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.12", "success": false, "error": "Tripped" }<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
               </div>
 
-              <h3 style="margin-bottom:6px;">🔌 <b>/vfdconnect</b> (POST)</h3>
+              <h3 style="margin-bottom:6px;">🔌 <b>/api/vfdconnect</b> (POST)</h3>
               <div style="margin-bottom:8px;">Connect or disconnect a VFD by IP. Used by the UI to reconnect or disconnect a drive. This is merely a toggle, so invoking this does not specify whether to turn it on or off, it just change it's status.</div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
                 <code>{ "ip": "10.33.30.11" }</code>
               </div>
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
-                <code>curl -X POST http://<span class="api-host"></span>/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
+                <code>curl -X POST http://<span class="api-host"></span>/api/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
               </div>
             </div>
           </div>
