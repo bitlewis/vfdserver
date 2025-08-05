@@ -148,13 +148,13 @@ Defines register mappings and control logic for each supported drive type. ⚡
 
 Remotely control the VFD server by sending JSON commands to its HTTP endpoints. All endpoints are accessible on `http://<BindIP>:80` (as set in your config). 🌐
 
-### 🖥️ `/devices` (GET)
+### 🖥️ `/api/devices` (GET)
 
 Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).
 
 **Example:**
 ```bash
-curl http://10.33.10.53/devices
+curl http://10.33.10.53/api/devices
 ```
 
 **Example Output:**
@@ -185,7 +185,7 @@ curl http://10.33.10.53/devices
 
 Returns an array of objects, each containing both static config and live data for every drive.
 
-### 🔗 `/control` (POST)
+### 🔗 `/api/control` (POST)
 
 Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:
 
@@ -209,19 +209,19 @@ Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:
 - 🎚️ `SetSpeed`: Set the speed (Hz) and start the drive
 
 ```bash
-curl -X POST http://10.33.10.53/control \
+curl -X POST http://10.33.10.53/api/control \
   -H 'Content-Type: application/json' \
   -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'
 ```
 
 > ✅ **Success:** `200 OK` with message `Control action processed successfully` or error details
 
-### 📜 `/control-events` (GET)
+### 📜 `/api/control-events` (GET)
 
 Fetch a list of recent control events (for audit/logging). 🕒
 
 ```bash
-curl http://10.33.10.53/control-events
+curl http://10.33.10.53/api/control-events
 ```
 
 ```json
@@ -238,7 +238,7 @@ curl http://10.33.10.53/control-events
 ]
 ```
 
-### 🔌 `/vfdconnect` (POST)
+### 🔌 `/api/vfdconnect` (POST)
 
 (Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive. 🔄
 We can also use the disconnect/reconnect to force the VFD connection manager to recheck a VFD that may have recovered.
@@ -248,7 +248,7 @@ We can also use the disconnect/reconnect to force the VFD connection manager to 
 ```
 
 ```bash
-curl -X POST http://10.33.10.53/vfdconnect \
+curl -X POST http://10.33.10.53/api/vfdconnect \
   -H 'Content-Type: application/json' \
   -d '{"ip": "10.33.30.11"}'
 ```
