@@ -347,6 +347,15 @@ scrape_configs:
       - targets: ['10.33.10.53:80']
 ```
 
+**Available Metrics:**
+- `up`: VFD connection status (1=connected, 0=disconnected) - Standard Prometheus convention
+- `vfd_status`: VFD operational status (1=running, 0=stopped) 
+- `vfd_speed_hz`: Current VFD speed in Hertz
+- `vfd_speed_rpm`: Current VFD speed in RPM
+- `vfd_speed_percent`: Current VFD speed as percentage
+- `vfd_amperage`: Current VFD amperage usage
+- `vfd_cfm`: Current fan CFM (Cubic Feet per Minute)
+
 ---
 
 ## 🔒 Security
