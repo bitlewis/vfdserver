@@ -3,7 +3,7 @@
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
 // Added /devices json endpoint to retreive active devices with stats. Added API doc on the front-end.
-// Much more, including major UI revamp and improvements. Added bindport sent to front-end for websocket initiation.
+// Much more, including major UI revamp and improvements.
 // Added support for Automation Direct GS4-4020 and WEG CFW500 drives with some improvements as well.
 
 // =====================
@@ -1106,6 +1106,14 @@ var (
         []string{"ip", "group", "fan_number"},
     )
 
+        vfdup = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Name: "up",
+            Help: "VFD connection status (1=connected, 0=disconnected)",
+        },
+        []string{"ip", "group", "fan_number"},
+    )
+
 )
 
 func init() {
@@ -1116,6 +1124,7 @@ func init() {
     prometheus.MustRegister(vfdspeedpercent)
     prometheus.MustRegister(vfdamperage)
     prometheus.MustRegister(vfdcfm)
+    prometheus.MustRegister(vfdup)
 }
 
 // updateMetrics uses cached vfdData for Prometheus metrics
@@ -1148,7 +1157,15 @@ func collectMetrics() {
             status = 1.0
         }
 
+        // Set "up" metric based on VFD availability
+        up := 0.0
+        driveStatus := fmt.Sprintf("%v", drive["status"])
+        if driveStatus != "Unavailable" && driveStatus != "Disabled" {
+            up = 1.0
+        }
+
         vfdstatus.With(labels).Set(status)
+        vfdup.With(labels).Set(up)
         vfdspeedhz.With(labels).Set(safeFloat(drive["actualSpeed"]))
         vfdspeedrpm.With(labels).Set(float64(safeInt(drive["rpmSpeed"])))
         vfdspeedpercent.With(labels).Set(safeFloat(drive["actualPercent"]))
