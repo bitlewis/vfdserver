@@ -1,4 +1,4 @@
-// VFD Control Server v3.4 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.6 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
@@ -1225,13 +1225,13 @@ func main() {
 
         http.HandleFunc("/", handleLivePage)
         http.HandleFunc("/ws", handleWebSocket)
-        http.HandleFunc("/control", handleControl)
-        http.HandleFunc("/control-events", handleControlEvents)
-        http.HandleFunc("/app-config", handleAppConfig)
-        http.HandleFunc("/vfdconnect", handleVFDConnect)
-        http.HandleFunc("/devices", handleDevices)
+        http.HandleFunc("/api/control", handleControl)
+        http.HandleFunc("/api/control-events", handleControlEvents)
+        http.HandleFunc("/api/app-config", handleAppConfig)
+        http.HandleFunc("/api/vfdconnect", handleVFDConnect)
+        http.HandleFunc("/api/devices", handleDevices)
         http.Handle("/metrics", promhttp.Handler())
 
-        log.Println("VFD Control Server v3.4 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP + ":" + appConfig.BindPort)
+        log.Println("VFD Control Server v3.6 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP + ":" + appConfig.BindPort)
         log.Fatal(http.ListenAndServe(appConfig.BindIP + ":" + appConfig.BindPort, nil))
 }
