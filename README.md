@@ -1,4 +1,4 @@
-# VFD Control Server
+# VFD Control Server v3.7
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.23.2-blue?logo=go" alt="Go version" />
@@ -252,6 +252,40 @@ curl -X POST http://10.33.10.53/api/vfdconnect \
   -H 'Content-Type: application/json' \
   -d '{"ip": "10.33.30.11"}'
 ```
+
+### 📊 `/api/status` (GET)
+
+Get system status information including loading state, connection status, and data collection metrics. 📈
+
+```bash
+curl http://10.33.10.53/api/status
+```
+
+**Example Output:**
+```json
+{
+  "loading": false,
+  "ready": true,
+  "initialConnectionsDone": true,
+  "totalVFDs": 24,
+  "connectedVFDs": 22,
+  "healthyVFDs": 21,
+  "lastUpdateTime": "2025-08-06T12:34:56Z",
+  "dataCollectionAge": "5.2s"
+}
+```
+
+**Response Fields:**
+- 🔄 `loading`: True if system is still establishing initial connections
+- ✅ `ready`: True if system has completed initial setup and is operational
+- 🔗 `initialConnectionsDone`: True after first connection attempt to all VFDs
+- 📊 `totalVFDs`: Total number of configured VFDs
+- 🔌 `connectedVFDs`: Number of successfully connected VFDs
+- 💚 `healthyVFDs`: Number of healthy/responsive VFDs
+- 🕒 `lastUpdateTime`: Timestamp of last data collection cycle
+- ⏰ `dataCollectionAge`: How long ago data was last collected
+
+This endpoint is particularly useful for external monitoring systems and the curtail dashboard to determine if the VFD server is still initializing or ready for operations.
 
 ## 🏗️ Building the Server
 
