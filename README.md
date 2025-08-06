@@ -30,7 +30,9 @@
   Easily extendable for new drive models.
 - 📊 **Prometheus Metrics**  
   Exposes `/metrics` endpoint for Prometheus monitoring and alerting.
-- 📝 **Control Events Log**  
+- � **System Status API**  
+  New `/api/status` endpoint provides real-time system health, loading states, and connection metrics for external monitoring.
+- �📝 **Control Events Log**  
   View recent control actions and their results in the UI.
 - 🌙 **Dark Mode**  
   Toggleable dark/light mode for the web UI. 
