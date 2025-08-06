@@ -1,4 +1,4 @@
-// VFD Control Server v3.6 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.4 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
@@ -110,6 +110,21 @@ type DriveTypeProfile struct {
 }
 
 // =====================
+// System Status Types
+// =====================
+
+type SystemStatus struct {
+    Loading              bool          `json:"loading"`              // True if system is still loading/connecting to VFDs
+    Ready                bool          `json:"ready"`                // True if system has completed initial connections
+    InitialConnectionsDone bool        `json:"initialConnectionsDone"` // True after first connection attempt to all VFDs
+    TotalVFDs            int           `json:"totalVFDs"`            // Total number of configured VFDs
+    ConnectedVFDs        int           `json:"connectedVFDs"`        // Number of successfully connected VFDs
+    HealthyVFDs          int           `json:"healthyVFDs"`          // Number of healthy/responsive VFDs
+    LastUpdateTime       time.Time     `json:"lastUpdateTime"`       // When we last updated VFD data
+    DataCollectionAge    time.Duration `json:"dataCollectionAge"`    // How long ago we last collected data
+}
+
+// =====================
 // Global Variables
 // =====================
 var appConfig AppConfig
@@ -118,6 +133,8 @@ var vfdData      []map[string]interface{}
 var vfdDataMutex sync.RWMutex
 var vfdConnections map[string]*VFDConnection
 var vfdConnectionsMu sync.RWMutex
+var systemStatus SystemStatus
+var statusMutex sync.RWMutex
 var controlEvents []ControlEvent
 var driveTypeProfiles map[string]DriveTypeProfile
 var disabledDrives = make(map[string]bool)
@@ -1014,6 +1031,54 @@ func handleVFDConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 // =====================
+// System Status API
+// =====================
+func handleSystemStatus(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    
+    statusMutex.RLock()
+    vfdConnectionsMu.RLock()
+    vfdDataMutex.RLock()
+    
+    // Calculate current system status
+    totalVFDs := len(appConfig.VFDs)
+    connectedVFDs := 0
+    healthyVFDs := 0
+    
+    for _, vfd := range appConfig.VFDs {
+        if conn, exists := vfdConnections[vfd.IP]; exists {
+            if conn.healthy {
+                connectedVFDs++
+                healthyVFDs++
+            }
+        }
+    }
+    
+    // Update system status
+    status := systemStatus
+    status.TotalVFDs = totalVFDs
+    status.ConnectedVFDs = connectedVFDs
+    status.HealthyVFDs = healthyVFDs
+    
+	// Consider system ready if initial connections are done and we have some VFD data
+	status.Ready = status.InitialConnectionsDone && len(vfdData) > 0
+	status.Loading = !status.Ready
+	
+	// Calculate data collection age properly
+	if !status.LastUpdateTime.IsZero() {
+		status.DataCollectionAge = time.Since(status.LastUpdateTime)
+	} else {
+		status.DataCollectionAge = 0
+	}
+	
+	vfdDataMutex.RUnlock()
+	vfdConnectionsMu.RUnlock()
+	statusMutex.RUnlock()
+	
+	json.NewEncoder(w).Encode(status)
+}
+
+// =====================
 // Devices API
 // =====================
 func handleDevices(w http.ResponseWriter, r *http.Request) {
@@ -1180,6 +1245,15 @@ func collectMetrics() {
 func main() {
         var err error
 
+        // Initialize system status
+        statusMutex.Lock()
+        systemStatus = SystemStatus{
+            Loading:                true,
+            Ready:                  false,
+            InitialConnectionsDone: false,
+        }
+        statusMutex.Unlock()
+
         // Load drive type profiles
         driveTypeProfiles = make(map[string]DriveTypeProfile)
         if err := loadDriveTypeProfiles("/etc/vfd/drive_profiles.json"); err != nil {
@@ -1219,8 +1293,23 @@ func main() {
 
             for range ticker.C {
                 pollAllDrives()
+                
+                // Update data timestamp
+                statusMutex.Lock()
+                systemStatus.LastUpdateTime = time.Now()
+                statusMutex.Unlock()
             }
         }()
+        
+        // Mark initial connections as done after a brief delay to allow connections to establish
+        go func() {
+            time.Sleep(10 * time.Second) // Give VFDs time to connect
+            statusMutex.Lock()
+            systemStatus.InitialConnectionsDone = true
+            statusMutex.Unlock()
+            log.Println("VFD initial connection phase completed")
+        }()
+        
         go updateMetrics()
 
         http.HandleFunc("/", handleLivePage)
@@ -1230,6 +1319,7 @@ func main() {
         http.HandleFunc("/api/app-config", handleAppConfig)
         http.HandleFunc("/api/vfdconnect", handleVFDConnect)
         http.HandleFunc("/api/devices", handleDevices)
+        http.HandleFunc("/api/status", handleSystemStatus)
         http.Handle("/metrics", promhttp.Handler())
 
         log.Println("VFD Control Server v3.6 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP + ":" + appConfig.BindPort)
