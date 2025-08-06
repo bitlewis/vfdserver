@@ -483,9 +483,29 @@
               <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
                 <code>{ "ip": "10.33.30.11" }</code>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:18px;">
                 <code>curl -X POST http://<span class="api-host"></span>/api/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
               </div>
+
+              <h3 style="margin-bottom:6px;">📊 <b>/api/status</b> (GET)</h3>
+              <div style="margin-bottom:8px;">Get system status information including loading state, connection status, and data collection metrics.</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <code>curl http://<span class="api-host"></span>/api/status</code>
+              </div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+                <code>{<br>&nbsp;&nbsp;"loading": false,<br>&nbsp;&nbsp;"ready": true,<br>&nbsp;&nbsp;"initialConnectionsDone": true,<br>&nbsp;&nbsp;"totalVFDs": 24,<br>&nbsp;&nbsp;"connectedVFDs": 22,<br>&nbsp;&nbsp;"healthyVFDs": 21,<br>&nbsp;&nbsp;"lastUpdateTime": "2025-08-06T12:34:56Z",<br>&nbsp;&nbsp;"dataCollectionAge": "5.2s"<br>}</code>
+              </div>
+              <div style="margin-bottom:8px;">Response Fields:</div>
+              <ul style="font-size:14px; margin-bottom:18px;">
+                <li><b>loading</b>: True if system is still establishing initial connections</li>
+                <li><b>ready</b>: True if system has completed initial setup and is operational</li>
+                <li><b>initialConnectionsDone</b>: True after first connection attempt to all VFDs</li>
+                <li><b>totalVFDs</b>: Total number of configured VFDs</li>
+                <li><b>connectedVFDs</b>: Number of successfully connected VFDs</li>
+                <li><b>healthyVFDs</b>: Number of healthy/responsive VFDs</li>
+                <li><b>lastUpdateTime</b>: Timestamp of last data collection cycle</li>
+                <li><b>dataCollectionAge</b>: How long ago data was last collected</li>
+              </ul>
             </div>
           </div>
         </div>
