@@ -104,6 +104,7 @@
             expandedGroups = new Proxy({}, { get: () => true }); // Default all GROUPs to expanded
         }
         let controlEvents = [];
+        let lastDriveData = [];
 
         // === 2. App Config and WebSocket Setup ===
         fetch('/api/app-config')
@@ -150,7 +151,26 @@
 
         // === 3. UI Update Functions ===
         function updateUI(data) {
+            lastDriveData = Array.isArray(data) ? data : [];
             const container = document.getElementById('drive-container');
+            // Update reconnect button state based on Unavailable VFDs
+            const btn = document.getElementById('reconnectUnavailableBtn');
+            if (btn) {
+                const unavailableCount = (lastDriveData || []).filter(d => d.status === 'Unavailable').length;
+                if (unavailableCount === 0) {
+                    btn.disabled = true;
+                    btn.style.background = '#a0a4ab';
+                    btn.style.opacity = '0.7';
+                    btn.style.cursor = 'not-allowed';
+                    btn.title = 'No Unavailable VFDs to reconnect';
+                } else {
+                    btn.disabled = false;
+                    btn.style.background = '#0d6efd';
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.title = 'Disconnect then reconnect all VFDs currently Unavailable';
+                }
+            }
             const currentCheckboxStates = {};
             document.querySelectorAll(".drive-checkbox").forEach(cb => {
                 currentCheckboxStates[cb.dataset.ip] = cb.checked;
@@ -403,8 +423,46 @@
             document.getElementById('apiModalBtn').onclick = function() {
               document.getElementById('apiModal').style.display = 'block';
             };
+            const reconnectBtn = document.getElementById('reconnectUnavailableBtn');
+            if (reconnectBtn) {
+                reconnectBtn.onclick = reconnectUnavailableVFDs;
+            }
         });
         setInterval(updateControlEvents, 1000);
+
+        // === 6. Reconnect Unavailable VFDs ===
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+        async function reconnectUnavailableVFDs() {
+            const btn = document.getElementById('reconnectUnavailableBtn');
+            if (!btn) return;
+            const unavailable = (lastDriveData || []).filter(d => d.status === 'Unavailable').map(d => d.ip);
+            if (unavailable.length === 0) {
+                btn.textContent = 'Reconnect Unavailable VFDs';
+                return;
+            }
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = `Reconnecting ${unavailable.length}...`;
+            try {
+                // Bulk disconnect then bulk connect for a single pair of control events
+                await fetch('/api/vfdconnect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ips: unavailable, action: 'disconnect' })
+                });
+                await sleep(1000);
+                await fetch('/api/vfdconnect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ips: unavailable, action: 'connect' })
+                });
+            } catch (e) {
+                console.error('Reconnect error', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
     </script>
 </head>
 <body>
@@ -424,7 +482,10 @@
                 </span>
                 <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
             </div>
-            <button id="darkModeToggle" style="margin-left: auto; padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer;">🌙 Dark Mode</button>
+            <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                <button id="reconnectUnavailableBtn" title="Disconnect then reconnect all VFDs currently Unavailable" style="padding:6px 12px; border-radius:6px; border:none; background:#0d6efd; color:#fff; font-size:14px; cursor:pointer;">↻ Reconnect Unavailable VFDs</button>
+                <button id="darkModeToggle" style="padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer;">🌙 Dark Mode</button>
+            </div>
         </div>
         <button id="apiModalBtn" style="position:fixed;bottom:24px;right:32px;z-index:1100;padding:8px 18px;border-radius:6px;border:none;background:#007bff;color:#fff;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:background 0.2s;">🌍 Remote Control API</button>
         <div id="apiModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
