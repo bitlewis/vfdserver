@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>Modern, real-time web-based control and monitoring for industrial Variable Frequency Drives (VFDs).</b><br>
-  <i>Built for AAIMDC, supporting OptidriveP2 and OptidriveE3 drives.</i>
+  <i>Supports OptidriveP2 and OptidriveE3 drives.</i>
 </p>
 
 ---
@@ -30,9 +30,9 @@
   Easily extendable for new drive models.
 - 📊 **Prometheus Metrics**  
   Exposes `/metrics` endpoint for Prometheus monitoring and alerting.
-- � **System Status API**  
+- **System Status API**  
   New `/api/status` endpoint provides real-time system health, loading states, and connection metrics for external monitoring.
-- �📝 **Control Events Log**  
+- **Control Events Log**  
   View recent control actions and their results in the UI.
 - 🌙 **Dark Mode**  
   Toggleable dark/light mode for the web UI. 
@@ -242,17 +242,41 @@ curl http://10.33.10.53/api/control-events
 
 ### 🔌 `/api/vfdconnect` (POST)
 
-(Dis)connect a VFD by IP. Used by the UI to reconnect or disconnect a drive. 🔄
-We can also use the disconnect/reconnect to force the VFD connection manager to recheck a VFD that may have recovered.
+Connect, disconnect, or toggle VFD connectivity. Also supports bulk operations and generates a single aggregated control event per request.
 
+Request options:
+- Single toggle:
 ```json
 { "ip": "10.33.30.11" }
 ```
+- Bulk connect or disconnect:
+```json
+{ "ips": ["10.33.30.11", "10.33.30.12"], "action": "connect" }
+```
+```json
+{ "ips": ["10.33.30.11", "10.33.30.12"], "action": "disconnect" }
+```
+- Bulk toggle (omit action):
+```json
+{ "ips": ["10.33.30.11", "10.33.30.12"] }
+```
 
+Examples:
 ```bash
+# Single toggle
 curl -X POST http://10.33.10.53/api/vfdconnect \
   -H 'Content-Type: application/json' \
   -d '{"ip": "10.33.30.11"}'
+
+# Bulk disconnect
+curl -X POST http://10.33.10.53/api/vfdconnect \
+  -H 'Content-Type: application/json' \
+  -d '{"ips": ["10.33.30.11","10.33.30.12"], "action": "disconnect"}'
+
+# Bulk connect
+curl -X POST http://10.33.10.53/api/vfdconnect \
+  -H 'Content-Type: application/json' \
+  -d '{"ips": ["10.33.30.11","10.33.30.12"], "action": "connect"}'
 ```
 
 ### 📊 `/api/status` (GET)
@@ -278,14 +302,14 @@ curl http://10.33.10.53/api/status
 ```
 
 **Response Fields:**
-- 🔄 `loading`: True if system is still establishing initial connections
-- ✅ `ready`: True if system has completed initial setup and is operational
-- 🔗 `initialConnectionsDone`: True after first connection attempt to all VFDs
-- 📊 `totalVFDs`: Total number of configured VFDs
-- 🔌 `connectedVFDs`: Number of successfully connected VFDs
-- 💚 `healthyVFDs`: Number of healthy/responsive VFDs
-- 🕒 `lastUpdateTime`: Timestamp of last data collection cycle
-- ⏰ `dataCollectionAge`: How long ago data was last collected
+- `loading`: True if system is still establishing initial connections
+- `ready`: True if system has completed initial setup and is operational
+- `initialConnectionsDone`: True after first connection attempt to all VFDs
+- `totalVFDs`: Total number of configured VFDs
+- `connectedVFDs`: Number of successfully connected VFDs
+- `healthyVFDs`: Number of healthy/responsive VFDs
+- `lastUpdateTime`: Timestamp of last data collection cycle
+- `dataCollectionAge`: How long ago data was last collected
 
 This endpoint is particularly useful for external monitoring systems and the curtail dashboard to determine if the VFD server is still initializing or ready for operations.
 
@@ -443,5 +467,5 @@ MIT (or your preferred license)
 
 ## 🙏 Credits
 
-- 👨‍💻 Developed by Louis Valois for AAIMDC
+- Developed by Louis Valois
 - 🔗 Uses [grid-x/modbus](https://github.com/grid-x/modbus), [gorilla/websocket](https://github.com/gorilla/websocket), and [prometheus/client_golang](https://github.com/prometheus/client_golang) 
