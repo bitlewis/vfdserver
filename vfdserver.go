@@ -138,6 +138,56 @@ var statusMutex sync.RWMutex
 var controlEvents []ControlEvent
 var driveTypeProfiles map[string]DriveTypeProfile
 var disabledDrives = make(map[string]bool)
+var eventsMutex sync.RWMutex
+
+const (
+    controlEventsFilePath = "/etc/vfd/control_events.json"
+    controlEventsRetention = 100
+)
+
+// Persist and restore control events for retention across restarts
+func loadControlEvents(filePath string) {
+    file, err := os.Open(filePath)
+    if err != nil {
+        return
+    }
+    defer file.Close()
+
+    var loaded []ControlEvent
+    decoder := json.NewDecoder(file)
+    if err := decoder.Decode(&loaded); err != nil {
+        log.Printf("Failed to decode control events from %s: %v", filePath, err)
+        return
+    }
+
+    if len(loaded) > controlEventsRetention {
+        loaded = loaded[len(loaded)-controlEventsRetention:]
+    }
+
+    eventsMutex.Lock()
+    controlEvents = loaded
+    eventsMutex.Unlock()
+}
+
+func saveControlEvents(filePath string) {
+    eventsMutex.RLock()
+    snapshot := make([]ControlEvent, len(controlEvents))
+    copy(snapshot, controlEvents)
+    eventsMutex.RUnlock()
+
+    file, err := os.Create(filePath)
+    if err != nil {
+        log.Printf("Failed to create %s: %v", filePath, err)
+        return
+    }
+    defer file.Close()
+
+    encoder := json.NewEncoder(file)
+    encoder.SetIndent("", "  ")
+    if err := encoder.Encode(snapshot); err != nil {
+        log.Printf("Failed to encode control events to %s: %v", filePath, err)
+    }
+}
 
 // =====================
 // Utility/Helper Functions
@@ -850,6 +900,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleControlEvents(w http.ResponseWriter, r *http.Request) {
+    eventsMutex.RLock()
     events := make([]map[string]interface{}, len(controlEvents))
     for i, event := range controlEvents {
         events[i] = map[string]interface{}{
@@ -859,6 +910,7 @@ func handleControlEvents(w http.ResponseWriter, r *http.Request) {
             "drives":    event.Drives,
         }
     }
+    eventsMutex.RUnlock()
     json.NewEncoder(w).Encode(events)
 }
 
@@ -962,11 +1014,14 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
     }
     wg.Wait()
 
-    // Log the event
+    // Log the event with retention and persist
+    eventsMutex.Lock()
     controlEvents = append(controlEvents, event)
-    if len(controlEvents) > 100 {
+    if len(controlEvents) > controlEventsRetention {
         controlEvents = controlEvents[1:]
     }
+    eventsMutex.Unlock()
+    saveControlEvents(controlEventsFilePath)
 
     w.Write([]byte("Control action processed successfully"))
     go pollAllDrives()
@@ -989,44 +1044,94 @@ func handleVFDConnect(w http.ResponseWriter, r *http.Request) {
         return
     }
     var req struct {
-        IP string `json:"ip"`
+        IP     string   `json:"ip"`
+        IPs    []string `json:"ips"`
+        Action string   `json:"action"` // "connect", "disconnect", or empty for toggle
     }
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Failed to parse request body: "+err.Error(), http.StatusBadRequest)
         return
     }
-    var action string
-    if disabledDrives[req.IP] {
-        delete(disabledDrives, req.IP)
-        action = "ConnectVFD"
-        go pollAllDrives()
-        w.Write([]byte("Drive enabled"))
-        log.Printf("[INCOMING REQUEST] Control action: Action=%s, Drive=%v\n", action, req.IP)
-        // Start/restart the connection goroutine for this drive
-        for i := range appConfig.VFDs {
-            if appConfig.VFDs[i].IP == req.IP {
-                go manageVFDConnection(&appConfig.VFDs[i])
-                break
+    // Determine list of IPs to operate on (bulk or single)
+    targets := make([]string, 0)
+    if len(req.IPs) > 0 {
+        targets = append(targets, req.IPs...)
+    } else if req.IP != "" {
+        targets = append(targets, req.IP)
+    } else {
+        http.Error(w, "Missing 'ip' or 'ips' in request", http.StatusBadRequest)
+        return
+    }
+
+    // Normalize action for logging and behavior
+    normalized := strings.ToLower(strings.TrimSpace(req.Action))
+    var logAction string
+    switch normalized {
+    case "connect":
+        logAction = "ConnectVFD"
+    case "disconnect":
+        logAction = "DisconnectVFD"
+    default:
+        logAction = "ToggleVFD"
+    }
+
+    // Execute
+    drives := make([]DriveEventInfo, 0, len(targets))
+    for _, ip := range targets {
+        success := true
+        // Apply requested state or toggle
+        if normalized == "connect" {
+            if disabledDrives[ip] {
+                delete(disabledDrives, ip)
+                // Start/restart the connection goroutine for this drive
+                for i := range appConfig.VFDs {
+                    if appConfig.VFDs[i].IP == ip {
+                        go manageVFDConnection(&appConfig.VFDs[i])
+                        break
+                    }
+                }
+            }
+        } else if normalized == "disconnect" {
+            disabledDrives[ip] = true
+        } else { // toggle
+            if disabledDrives[ip] {
+                delete(disabledDrives, ip)
+                for i := range appConfig.VFDs {
+                    if appConfig.VFDs[i].IP == ip {
+                        go manageVFDConnection(&appConfig.VFDs[i])
+                        break
+                    }
+                }
+            } else {
+                disabledDrives[ip] = true
             }
         }
-    } else {
-        disabledDrives[req.IP] = true
-        action = "DisconnectVFD"
-        go pollAllDrives()
-        w.Write([]byte("Drive disabled"))
-        log.Printf("[INCOMING REQUEST] Control action: Action=%s, Drive=%v\n", action, req.IP)
+        drives = append(drives, DriveEventInfo{IP: ip, Success: success})
     }
-    
-    saveDisabledDrives()
 
-    event := ControlEvent{
+    // Persist disabled drives and schedule poll once
+    saveDisabledDrives()
+    go pollAllDrives()
+
+    // Log a single aggregated event
+    agg := ControlEvent{
         Timestamp: time.Now(),
-        Action:    action,
-        Drives:    []DriveEventInfo{{IP: req.IP, Success: true}},
+        Action:    logAction,
+        Drives:    drives,
     }
-    controlEvents = append(controlEvents, event)
-    if len(controlEvents) > 100 {
+    eventsMutex.Lock()
+    controlEvents = append(controlEvents, agg)
+    if len(controlEvents) > controlEventsRetention {
         controlEvents = controlEvents[1:]
+    }
+    eventsMutex.Unlock()
+    saveControlEvents(controlEventsFilePath)
+
+    // Response
+    if len(targets) == 1 {
+        if logAction == "ConnectVFD" { w.Write([]byte("Drive enabled")) } else if logAction == "DisconnectVFD" { w.Write([]byte("Drive disabled")) } else { w.Write([]byte("Drive toggled")) }
+    } else {
+        w.Write([]byte(fmt.Sprintf("Bulk %s applied to %d drives", logAction, len(targets))))
     }
 }
 
@@ -1280,6 +1385,8 @@ func main() {
         initializeVfdData()
 
         vfdConnections = make(map[string]*VFDConnection)
+        // Load persisted control events from previous runs
+        loadControlEvents(controlEventsFilePath)
         for _, drives := range vfdConfig {
             for _, d := range drives {
                 go manageVFDConnection(&d)
