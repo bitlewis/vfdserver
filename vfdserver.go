@@ -1,10 +1,11 @@
-// VFD Control Server v3.7.1 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.8.1 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
 // Added /devices json endpoint to retreive active devices with stats. Added API doc on the front-end.
 // Much more, including major UI revamp and improvements.
 // Added support for Automation Direct GS4-4020 and WEG CFW500 drives with some improvements as well.
+// v3.8.1: Added curtailment control feature for demand response and load shedding with state persistence.
 // v3.7.1: Fixed OptidriveP2/E3 compatibility with INPUT register addressing and frequency calculations.
 
 // =====================
@@ -32,7 +33,7 @@ import (
 // =====================
 // Version
 // =====================
-const Version = "3.7.1"
+const Version = "3.8.1"
 
 // =====================
 // Type Definitions

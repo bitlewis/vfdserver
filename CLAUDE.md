@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-VFD Control Server v3.7.1 is a Go-based web server for real-time control and monitoring of industrial Variable Frequency Drives (VFDs). It provides:
+VFD Control Server v3.8.1 is a Go-based web server for real-time control and monitoring of industrial Variable Frequency Drives (VFDs). It provides:
 - Persistent TCP/Modbus connections to VFDs with automatic reconnection
 - Real-time WebSocket-based web UI with live status updates
 - REST API for remote control and monitoring
@@ -200,14 +200,23 @@ All metrics include labels: `ip`, `fan_number`, `group`, `site`
 
 ## Versioning
 
-**Current Version:** 3.7.1
+**Current Version:** 3.8.1
 
 The version is defined as a constant in `vfdserver.go`:
 ```go
-const Version = "3.7.1"
+const Version = "3.8.1"
 ```
 
 **Version History:**
+- **v3.8.1** (2025-11-03): Added curtailment control feature for demand response and load shedding
+  - New `/api/curtail` POST endpoint with curtail/resume actions
+  - Group-based selective curtailment (curtail specific groups or all drives)
+  - State persistence in `/etc/vfd/curtailment_state.json` (survives restarts)
+  - Smart resume that only restarts previously running drives
+  - Curtail button in UI with toggle functionality
+  - Control events logging for audit trail
+  - Comprehensive documentation in README.md and UI modal
+
 - **v3.7.1** (2025-11-03): Fixed OptidriveP2/E3 compatibility
   - Added `RegisterType` field to drive profiles to distinguish between INPUT and HOLDING registers
   - Corrected INPUT register addresses (Status: 6→5, OutputFrequency: 7→6, OutputCurrent: 8→7)
