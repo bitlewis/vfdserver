@@ -88,6 +88,21 @@ type DriveEventInfo struct {
     Error   string `json:"error,omitempty"`
 }
 
+type CurtailmentState struct {
+    Timestamp time.Time              `json:"timestamp"`
+    Groups    []string               `json:"groups"`
+    Drives    []CurtailedDriveState  `json:"drives"`
+}
+
+type CurtailedDriveState struct {
+    IP       string  `json:"ip"`
+    Group    string  `json:"group"`
+    SetSpeed float64 `json:"setSpeed"`
+    Status   string  `json:"status"`
+}
+
+const curtailmentStateFile = "/etc/vfd/curtailment_state.json"
+
 var upgrader = websocket.Upgrader{
     CheckOrigin: func(r *http.Request) bool {
         return true
@@ -888,6 +903,168 @@ func fanHold(ip string) error {
 }
 
 // =====================
+// Curtailment Functions
+// =====================
+
+// loadCurtailmentState loads the curtailment state from file
+func loadCurtailmentState() (*CurtailmentState, error) {
+    data, err := os.ReadFile(curtailmentStateFile)
+    if err != nil {
+        return nil, err
+    }
+    var state CurtailmentState
+    err = json.Unmarshal(data, &state)
+    if err != nil {
+        return nil, err
+    }
+    return &state, nil
+}
+
+// saveCurtailmentState saves the curtailment state to file
+func saveCurtailmentState(state *CurtailmentState) error {
+    data, err := json.MarshalIndent(state, "", "  ")
+    if err != nil {
+        return err
+    }
+    return os.WriteFile(curtailmentStateFile, data, 0644)
+}
+
+// clearCurtailmentState removes the curtailment state file
+func clearCurtailmentState() error {
+    err := os.Remove(curtailmentStateFile)
+    if err != nil && !os.IsNotExist(err) {
+        return err
+    }
+    return nil
+}
+
+// getDrivesForGroups returns all drives matching the specified groups
+// If groups is empty, returns all drives
+func getDrivesForGroups(groups []string) []DriveConfig {
+    var drives []DriveConfig
+    if len(groups) == 0 {
+        // Return all drives
+        drives = appConfig.VFDs
+    } else {
+        // Return only drives in specified groups
+        for _, drive := range appConfig.VFDs {
+            for _, group := range groups {
+                if drive.Group == group {
+                    drives = append(drives, drive)
+                    break
+                }
+            }
+        }
+    }
+    return drives
+}
+
+// curtailDrives saves current state and stops selected drives
+func curtailDrives(groups []string) error {
+    drives := getDrivesForGroups(groups)
+    if len(drives) == 0 {
+        return fmt.Errorf("no drives found for the specified groups")
+    }
+
+    state := CurtailmentState{
+        Timestamp: time.Now(),
+        Groups:    groups,
+        Drives:    make([]CurtailedDriveState, 0),
+    }
+
+    // Get current state from vfdData
+    vfdDataMutex.RLock()
+    for _, drive := range drives {
+        for _, entry := range vfdData {
+            if entry["ip"] == drive.IP {
+                curtailedDrive := CurtailedDriveState{
+                    IP:    drive.IP,
+                    Group: drive.Group,
+                }
+                if setSpeed, ok := entry["setSpeed"].(float64); ok {
+                    curtailedDrive.SetSpeed = setSpeed
+                }
+                if status, ok := entry["status"].(string); ok {
+                    curtailedDrive.Status = status
+                }
+                state.Drives = append(state.Drives, curtailedDrive)
+                break
+            }
+        }
+    }
+    vfdDataMutex.RUnlock()
+
+    // Save state to file
+    err := saveCurtailmentState(&state)
+    if err != nil {
+        return fmt.Errorf("failed to save curtailment state: %w", err)
+    }
+
+    log.Printf("[CURTAIL] Saving state for %d drives in groups: %v", len(state.Drives), groups)
+
+    // Stop all affected drives
+    var wg sync.WaitGroup
+    for _, drive := range state.Drives {
+        wg.Add(1)
+        go func(ip string) {
+            defer wg.Done()
+            err := fanStop(ip)
+            if err != nil {
+                log.Printf("[CURTAIL] Warning: Failed to stop drive %s: %v", ip, err)
+            }
+        }(drive.IP)
+    }
+    wg.Wait()
+
+    log.Printf("[CURTAIL] Curtailment complete, %d drives stopped, state saved", len(state.Drives))
+    return nil
+}
+
+// resumeDrives restores drives to their previous state
+func resumeDrives() error {
+    state, err := loadCurtailmentState()
+    if err != nil {
+        if os.IsNotExist(err) {
+            return fmt.Errorf("no curtailment state found to resume")
+        }
+        return fmt.Errorf("failed to load curtailment state: %w", err)
+    }
+
+    log.Printf("[RESUME] Loading curtailment state from %s", state.Timestamp.Format(time.RFC3339))
+    log.Printf("[RESUME] Restoring %d drives to previous state", len(state.Drives))
+
+    // Restore each drive
+    var wg sync.WaitGroup
+    for _, drive := range state.Drives {
+        wg.Add(1)
+        go func(d CurtailedDriveState) {
+            defer wg.Done()
+            if d.Status == "Running" || d.Status == "Enabled" {
+                // Restore speed and start the drive
+                err := setFanSpeed(d.IP, d.SetSpeed)
+                if err != nil {
+                    log.Printf("[RESUME] Warning: Failed to restore drive %s: %v", d.IP, err)
+                    return
+                }
+                log.Printf("[RESUME] Restored drive %s to %.1f Hz", d.IP, d.SetSpeed)
+            } else {
+                log.Printf("[RESUME] Drive %s was stopped, leaving stopped", d.IP)
+            }
+        }(drive)
+    }
+    wg.Wait()
+
+    // Clear the curtailment state file
+    err = clearCurtailmentState()
+    if err != nil {
+        log.Printf("[RESUME] Warning: Failed to clear curtailment state file: %v", err)
+    }
+
+    log.Printf("[RESUME] Resume complete, state cleared")
+    return nil
+}
+
+// =====================
 // HTTP/WebSocket Handlers
 // =====================
 func handleLivePage(w http.ResponseWriter, r *http.Request) {
@@ -1065,6 +1242,124 @@ func handleControl(w http.ResponseWriter, r *http.Request) {
     go pollAllDrives()
 }
 
+func handleCurtail(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var curtailData struct {
+        Action string   `json:"action"` // "curtail" or "resume"
+        Groups []string `json:"groups"` // Empty means all drives
+    }
+    err := json.NewDecoder(r.Body).Decode(&curtailData)
+    if err != nil {
+        http.Error(w, "Failed to parse request body: "+err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    // Validate action
+    if curtailData.Action != "curtail" && curtailData.Action != "resume" {
+        http.Error(w, "Invalid action, must be 'curtail' or 'resume'", http.StatusBadRequest)
+        return
+    }
+
+    log.Printf("[CURTAIL] Received %s request for groups: %v", curtailData.Action, curtailData.Groups)
+
+    var response map[string]interface{}
+
+    if curtailData.Action == "curtail" {
+        err = curtailDrives(curtailData.Groups)
+        if err != nil {
+            log.Printf("[CURTAIL] Error: %v", err)
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        drives := getDrivesForGroups(curtailData.Groups)
+        response = map[string]interface{}{
+            "success":    true,
+            "message":    fmt.Sprintf("Curtailment applied to %d drives", len(drives)),
+            "driveCount": len(drives),
+            "groups":     curtailData.Groups,
+            "timestamp":  time.Now().Format(time.RFC3339),
+        }
+
+        // Log control event
+        event := ControlEvent{
+            Timestamp: time.Now(),
+            Action:    "Curtail",
+            Speed:     0,
+            Drives:    make([]DriveEventInfo, 0),
+        }
+        for _, drive := range drives {
+            event.Drives = append(event.Drives, DriveEventInfo{
+                IP:      drive.IP,
+                Success: true,
+            })
+        }
+        eventsMutex.Lock()
+        controlEvents = append(controlEvents, event)
+        if len(controlEvents) > controlEventsRetention {
+            controlEvents = controlEvents[1:]
+        }
+        eventsMutex.Unlock()
+        saveControlEvents(controlEventsFilePath)
+
+    } else { // resume
+        // Load state BEFORE resuming (resume clears the file)
+        state, err := loadCurtailmentState()
+        if err != nil {
+            log.Printf("[RESUME] Error loading state: %v", err)
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        driveCount := len(state.Drives)
+        groups := state.Groups
+
+        // Now resume the drives
+        err = resumeDrives()
+        if err != nil {
+            log.Printf("[RESUME] Error: %v", err)
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        response = map[string]interface{}{
+            "success":    true,
+            "message":    fmt.Sprintf("Resumed %d drives from curtailment", driveCount),
+            "driveCount": driveCount,
+            "groups":     groups,
+            "timestamp":  time.Now().Format(time.RFC3339),
+        }
+
+        // Log control event
+        event := ControlEvent{
+            Timestamp: time.Now(),
+            Action:    "Resume",
+            Speed:     0,
+            Drives:    make([]DriveEventInfo, 0),
+        }
+        for _, drive := range state.Drives {
+            event.Drives = append(event.Drives, DriveEventInfo{
+                IP:      drive.IP,
+                Success: true,
+            })
+        }
+        eventsMutex.Lock()
+        controlEvents = append(controlEvents, event)
+        if len(controlEvents) > controlEventsRetention {
+            controlEvents = controlEvents[1:]
+        }
+        eventsMutex.Unlock()
+        saveControlEvents(controlEventsFilePath)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
+    go pollAllDrives()
+}
 
 func handleAppConfig(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1462,6 +1757,7 @@ func main() {
         http.HandleFunc("/ws", handleWebSocket)
         http.HandleFunc("/api/control", handleControl)
         http.HandleFunc("/api/control-events", handleControlEvents)
+        http.HandleFunc("/api/curtail", handleCurtail)
         http.HandleFunc("/api/app-config", handleAppConfig)
         http.HandleFunc("/api/vfdconnect", handleVFDConnect)
         http.HandleFunc("/api/devices", handleDevices)

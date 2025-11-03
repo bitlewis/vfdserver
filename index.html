@@ -35,6 +35,8 @@
         .control-panel button.set-speed { background-color: #4CAF50; color: white; }
         .control-panel button.start { background-color: #4CAF50; color: white; }
         .control-panel button.stop { background-color: #ffa500; color: white; }
+        .control-panel button.curtail { background-color: #ff6b6b; color: white; font-weight: bold; }
+        .control-panel button.curtail.active { background-color: #51cf66; }
         .control-panel input[type="number"] { padding: 10px; border: 1px solid #999999; border-radius: 5px; width: 100px; }
         .quickbutton { font-size: 14px; padding: 5px 5px; border: none; border-radius: 5px; cursor: pointer; }
         .drives-box { padding-top: 5px; width: 100%; margin: 5px auto; width: 97%; display: flex; gap: 10px; }
@@ -390,6 +392,87 @@
             checkboxes.forEach(checkbox => { if (!checkbox.disabled) { checkbox.checked = selectAllCheckbox.checked; } });
         }
 
+        // Curtailment functions
+        let isCurtailed = false;
+
+        function toggleCurtail() {
+            if (isCurtailed) {
+                // Resume from curtailment
+                if (!confirm('Resume all curtailed drives to their previous state?')) return;
+                sendCurtail('resume');
+            } else {
+                // Curtail drives
+                const checkedGroups = getSelectedGroups();
+                const message = checkedGroups.length === 0
+                    ? 'Curtail ALL drives? This will stop all fans and save their current state.'
+                    : `Curtail drives in groups: ${checkedGroups.join(', ')}? This will stop these fans and save their current state.`;
+                if (!confirm(message)) return;
+                sendCurtail('curtail', checkedGroups);
+            }
+        }
+
+        function getSelectedGroups() {
+            const checkedBoxes = Array.from(document.querySelectorAll('.drive-checkbox:checked'));
+            const groups = [...new Set(checkedBoxes.map(cb => cb.dataset.group))];
+            return groups;
+        }
+
+        function sendCurtail(action, groups = []) {
+            const body = { action: action, groups: groups };
+            fetch('/api/curtail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    if (action === 'curtail') {
+                        updateCurtailButton(true);
+                    } else {
+                        updateCurtailButton(false);
+                    }
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Failed to ' + action + ': ' + error);
+            });
+        }
+
+        function updateCurtailButton(curtailed) {
+            isCurtailed = curtailed;
+            const button = document.getElementById('curtail-button');
+            const text = document.getElementById('curtail-text');
+            if (curtailed) {
+                button.classList.add('active');
+                text.textContent = 'Resume';
+            } else {
+                button.classList.remove('active');
+                text.textContent = 'Curtail';
+            }
+        }
+
+        // Check curtailment status on page load
+        function checkCurtailmentStatus() {
+            fetch('/api/curtail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'status' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.curtailed) {
+                    updateCurtailButton(true);
+                }
+            })
+            .catch(() => {
+                // Silently fail - curtailment status check is optional
+            });
+        }
+
         // === 5. Event Listeners and Dark Mode ===
         document.addEventListener("DOMContentLoaded", function() {
             const hertzInput = document.getElementById('speed-value');
@@ -480,6 +563,9 @@
                 <span id="fanhold-button" style="display: none;">
                     <button class="fanhold" tooltip="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning"onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
                 </span>
+		&nbsp;&nbsp; | &nbsp;&nbsp;
+                <button class="curtail" id="curtail-button" tooltip="Curtail selected groups or all fans." onclick="toggleCurtail()"><span id="curtail-text">Curtail</span></button>
+		&nbsp;&nbsp; | &nbsp;&nbsp;
                 <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
             </div>
             <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
@@ -566,6 +652,28 @@
                 <li><b>healthyVFDs</b>: Number of healthy/responsive VFDs</li>
                 <li><b>lastUpdateTime</b>: Timestamp of last data collection cycle</li>
                 <li><b>dataCollectionAge</b>: How long ago data was last collected</li>
+              </ul>
+
+              <h3 style="margin-bottom:6px;">🔻 <b>/api/curtail</b> (POST)</h3>
+              <div style="margin-bottom:8px;">Curtail and resume VFD operations. Curtailment saves the current state of all or selected drives, stops them, and allows resuming to their previous state later.</div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <b>Curtail Request:</b><br>
+                <code>{ "action": "curtail", "groups": ["1", "B1-A"] }</code><br>
+                <span style="font-size:11px; color:#666;">// Empty groups array = curtail all drives</span>
+              </div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+                <b>Resume Request:</b><br>
+                <code>{ "action": "resume" }</code>
+              </div>
+              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+                <code>curl -X POST http://<span class="api-host"></span>/api/curtail \<br>  -H 'Content-Type: application/json' \<br>  -d '{"action": "curtail", "groups": ["1"]}'</code>
+              </div>
+              <div style="margin-bottom:8px;">How it works:</div>
+              <ul style="font-size:14px; margin-bottom:18px;">
+                <li><b>Curtail</b>: Saves current setpoint and status, stops all affected drives, stores state in /etc/vfd/curtailment_state.json</li>
+                <li><b>Resume</b>: Loads saved state, restores each drive to previous speed/state, clears state file</li>
+                <li><b>Groups</b>: If no groups specified, curtails ALL drives</li>
+                <li><b>Persistence</b>: State survives server restarts</li>
               </ul>
             </div>
           </div>

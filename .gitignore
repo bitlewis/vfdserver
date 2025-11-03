@@ -1,0 +1,18 @@
+# Binaries
+vfdserver
+
+# Backup directories
+old/
+
+# OS files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+
+# State files
+/etc/vfd/curtailment_state.json

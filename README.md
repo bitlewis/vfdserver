@@ -313,6 +313,65 @@ curl http://10.33.10.53/api/status
 
 This endpoint is particularly useful for external monitoring systems and the curtail dashboard to determine if the VFD server is still initializing or ready for operations.
 
+### 🔻 `/api/curtail` (POST)
+
+Curtail and resume VFD operations. Curtailment saves the current state of all or selected drives, stops them, and allows resuming to their previous state later. 🛑
+
+**Curtail Request:**
+```json
+{
+  "action": "curtail",
+  "groups": ["1", "B1-A"]  // Empty array or omit = curtail all drives
+}
+```
+
+**Resume Request:**
+```json
+{
+  "action": "resume"
+}
+```
+
+**Example - Curtail specific groups:**
+```bash
+curl -X POST http://10.33.10.53/api/curtail \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "curtail", "groups": ["1", "B1-A"]}'
+```
+
+**Example - Curtail ALL drives:**
+```bash
+curl -X POST http://10.33.10.53/api/curtail \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "curtail", "groups": []}'
+```
+
+**Example - Resume from curtailment:**
+```bash
+curl -X POST http://10.33.10.53/api/curtail \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "resume"}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Curtailment applied to 15 drives",
+  "driveCount": 15,
+  "groups": ["1", "B1-A"],
+  "timestamp": "2025-11-03T14:30:00Z"
+}
+```
+
+**How it works:**
+- **Curtail**: Saves current setpoint and status for each drive, stops all affected drives, and stores state in `/etc/vfd/curtailment_state.json`
+- **Resume**: Loads saved state, restores each drive to its previous speed and running state, then clears the state file
+- **Groups**: If no groups specified (empty array), curtails ALL configured drives
+- **Persistence**: State survives server restarts - curtailed drives remain stopped until manually resumed
+
+> 💡 **Use case**: Demand response, load shedding, emergency shutdown with automatic state restoration
+
 ## 🏗️ Building the Server
 
 ### 🧰 Prerequisites
