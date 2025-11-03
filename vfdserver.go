@@ -1,10 +1,11 @@
-// VFD Control Server v3.7 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
+// VFD Control Server v3.7.1 by Louis Valois - built for AAIMDC using OptidriveP2 and E3 Drives.
 // This version includes many new improvements such as persistent VFD connections (that we can toggle on/off on a per-vfd basis)
 // Faster websocket data refresh with back-end contiuously polling VFDs and serving front-ends from a global cache.
 // Modular VFD control and status functions based on drive profiles.
 // Added /devices json endpoint to retreive active devices with stats. Added API doc on the front-end.
 // Much more, including major UI revamp and improvements.
 // Added support for Automation Direct GS4-4020 and WEG CFW500 drives with some improvements as well.
+// v3.7.1: Fixed OptidriveP2/E3 compatibility with INPUT register addressing and frequency calculations.
 
 // =====================
 // Imports
@@ -27,6 +28,11 @@ import (
     "github.com/prometheus/client_golang/prometheus/promhttp"
     "strings"
 )
+
+// =====================
+// Version
+// =====================
+const Version = "3.7.1"
 
 // =====================
 // Type Definitions
@@ -90,6 +96,7 @@ var upgrader = websocket.Upgrader{
 
 // DriveTypeProfile holds register settings for each drive type
 type DriveTypeProfile struct {
+    RegisterType    string         `json:"RegisterType"`
     Setpoint        []int          `json:"Setpoint"`
     Control         int            `json:"Control"`
     SpeedPresetMultiplier int      `json:"SpeedPresetMultiplier"`
@@ -104,7 +111,7 @@ type DriveTypeProfile struct {
     OutFreqCalc     string         `json:"OutFreqCalc"`
     SetFreqCalc     string         `json:"SetFreqCalc"`
     OutCurrentCalc  string         `json:"OutCurrentCalc"`
-    SignedOutputFreq bool          `json:"SignedOutputFreq"`   
+    SignedOutputFreq bool          `json:"SignedOutputFreq"`
     MinHz           int            `json:"MinHz"`
     EnabledStatus   int            `json:"EnabledStatus"`
 }
@@ -591,42 +598,69 @@ func pollDrive(ctx context.Context, d DriveConfig) (map[string]interface{}, erro
     conn.mu.Lock()
     defer conn.mu.Unlock()
 
+    // Determine which register type to use based on profile
+    useInputRegisters := (profile.RegisterType == "input")
+    var err error
+
     // Read each required register individually
-    statusRaw, err := readHoldingRegister(ctx, conn.client, profile.Status)
+    var statusRaw float64
+    if useInputRegisters {
+        statusRaw, err = readInputRegister(ctx, conn.client, profile.Status)
+    } else {
+        statusRaw, err = readHoldingRegister(ctx, conn.client, profile.Status)
+    }
     if err != nil {
         conn.healthy = false
         return nil, err
     }
-    
+
     // Read enabled status for GS44020 drives
     var enabledStatusRaw float64
     if profile.EnabledStatus > 0 {
-        enabledStatusRaw, err = readHoldingRegister(ctx, conn.client, profile.EnabledStatus)
+        if useInputRegisters {
+            enabledStatusRaw, err = readInputRegister(ctx, conn.client, profile.EnabledStatus)
+        } else {
+            enabledStatusRaw, err = readHoldingRegister(ctx, conn.client, profile.EnabledStatus)
+        }
         if err != nil {
             conn.healthy = false
             return nil, err
         }
     }
-    
-    setSpeedRaw, err := readHoldingRegister(ctx, conn.client, profile.Setpoint[0])
+
+    var setSpeedRaw float64
+    if useInputRegisters {
+        setSpeedRaw, err = readInputRegister(ctx, conn.client, profile.Setpoint[0])
+    } else {
+        setSpeedRaw, err = readHoldingRegister(ctx, conn.client, profile.Setpoint[0])
+    }
     if err != nil {
         conn.healthy = false
         return nil, err
     }
-    
+
     // Read output frequency as signed or unsigned based on profile setting
     var outputFreqRaw float64
     if profile.SignedOutputFreq {
         outputFreqRaw, err = readSignedRegister(ctx, conn.client, profile.OutputFrequency)
     } else {
-        outputFreqRaw, err = readHoldingRegister(ctx, conn.client, profile.OutputFrequency)
+        if useInputRegisters {
+            outputFreqRaw, err = readInputRegister(ctx, conn.client, profile.OutputFrequency)
+        } else {
+            outputFreqRaw, err = readHoldingRegister(ctx, conn.client, profile.OutputFrequency)
+        }
     }
     if err != nil {
         conn.healthy = false
         return nil, err
     }
-    
-    outputCurrentRaw, err := readHoldingRegister(ctx, conn.client, profile.OutputCurrent)
+
+    var outputCurrentRaw float64
+    if useInputRegisters {
+        outputCurrentRaw, err = readInputRegister(ctx, conn.client, profile.OutputCurrent)
+    } else {
+        outputCurrentRaw, err = readHoldingRegister(ctx, conn.client, profile.OutputCurrent)
+    }
     if err != nil {
         conn.healthy = false
         return nil, err
@@ -861,12 +895,14 @@ func handleLivePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+    log.Printf("WebSocket connection attempt from %s", r.RemoteAddr)
     conn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
-        log.Println(err)
+        log.Println("WebSocket upgrade error:", err)
         return
     }
     defer conn.Close()
+    log.Printf("WebSocket connection established from %s", r.RemoteAddr)
 
     // Send initial data immediately
     vfdDataMutex.RLock()
@@ -874,10 +910,12 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
     copy(initialData, vfdData)
     vfdDataMutex.RUnlock()
 
+    log.Printf("Sending initial data to WebSocket client, data length: %d", len(initialData))
     if err := conn.WriteJSON(initialData); err != nil {
-        log.Println(err)
+        log.Println("WebSocket initial write error:", err)
         return
     }
+    log.Println("Initial data sent successfully")
 
     // Then send updated data every second
     ticker := time.NewTicker(1 * time.Second)
@@ -1033,6 +1071,7 @@ func handleAppConfig(w http.ResponseWriter, r *http.Request) {
         "siteName":   appConfig.SiteName,
         "groupLabel": appConfig.GroupLabel,
         "bindIP": appConfig.BindIP,
+        "bindPort": appConfig.BindPort,
         "noFanHold": appConfig.NoFanHold,
     })
 }
@@ -1429,6 +1468,6 @@ func main() {
         http.HandleFunc("/api/status", handleSystemStatus)
         http.Handle("/metrics", promhttp.Handler())
 
-        log.Println("VFD Control Server v3.7 by Louis Valois - for " + appConfig.SiteName + " Site\nWeb server started on http://" + appConfig.BindIP + ":" + appConfig.BindPort)
+        log.Printf("VFD Control Server v%s by Louis Valois - for %s Site\nWeb server started on http://%s:%s", Version, appConfig.SiteName, appConfig.BindIP, appConfig.BindPort)
         log.Fatal(http.ListenAndServe(appConfig.BindIP + ":" + appConfig.BindPort, nil))
 }

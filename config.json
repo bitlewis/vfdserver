@@ -1,30 +1,20 @@
 {
     "SiteName": "BLU01",
-    "BindIP": "10.32.10.53",
+    "BindIP": "0.0.0.0",
+    "BindPort": "8080",
     "GroupLabel": "Group",
-    "NoFanHold": true,    
+    "NoFanHold": true,
     "VFDs": [
       {
         "IP": "10.32.30.11",
         "Port": 502,
         "Unit": 1,
-        "Group": 1,
+        "Group": "1",
         "FanNumber": 1,
         "FanDesc": "3x 650RPM 25kCFM",
         "RpmHz": 10.83333333,
         "CfmRpm": 115.3846,
         "DriveType": "OptidriveP2"
-      },     
-      {
-        "IP": "10.33.30.11",
-        "Port": 502,
-        "Unit": 1,
-        "FanNumber": 1,
-        "FanDesc": "BLU02 FAN POD",
-        "Group": 99,
-        "RpmHz": 30,
-        "CfmRpm": 16.38888888,
-        "DriveType": "OptidriveE3"
       },
       {
         "IP": "10.148.26.100",
@@ -38,15 +28,15 @@
         "DriveType": "CFW500"
       },
       {
-        "IP": "10.148.26.201",
+        "IP": "10.148.26.214",
         "Port": 502,
         "Unit": 1,
-        "Group": "B2-A",
-        "FanNumber": 1,
-        "FanDesc": "B2 POD A FAN 1",
+        "Group": "B2-B",
+        "FanNumber": 4,
+        "FanDesc": "B2 POD B FAN 4",
         "RpmHz": 17.0334,
         "CfmRpm": 51.8599,
         "DriveType": "GS44020"
-      }        
+      }
     ]
   }

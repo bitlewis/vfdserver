@@ -1,4 +1,4 @@
-# VFD Control Server v3.7
+# VFD Control Server v3.7.1
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.23.2-blue?logo=go" alt="Go version" />
