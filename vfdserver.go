@@ -698,6 +698,9 @@ func pollDrive(ctx context.Context, d DriveConfig) (map[string]interface{}, erro
     rpm := int(actualSpeed * d.RpmToHz)
     cfm := int(math.Round(float64(rpm) * d.CfmRpm))
 
+    // Mark connection as healthy after successful poll
+    conn.healthy = true
+
     return map[string]interface{}{
         "setSpeed":      math.Round(setSpeed*10) / 10,
         "actualSpeed":   math.Round(actualSpeed*10) / 10,
