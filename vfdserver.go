@@ -368,6 +368,12 @@ func manageVFDConnection(vfd *DriveConfig) {
                 vfdConnectionsMu.Lock()
                 vfdConnections[ip] = conn
                 vfdConnectionsMu.Unlock()
+                // CFW500: Write P0222=4 on connect to activate SoftPLC speed control
+                if vfd.DriveType == "CFW500" {
+                    conn.mu.Lock()
+                    conn.client.WriteSingleRegister(context.Background(), 222, 4)
+                    conn.mu.Unlock()
+                }
                 if wasUnavailable {
                     log.Printf("VFD %s is now AVAILABLE (reconnected)", ip)
                     wasUnavailable = false
@@ -851,21 +857,22 @@ func setFanSpeed(ip string, setspeed float64) error {
     conn.mu.Lock()
     defer conn.mu.Unlock()
     actualSpeedSet := applyFreqCalc(setspeed, profile.SetFreqCalc)
-    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StartValue))
-    if err != nil {
-        return err
-    }
+    // Write speed reference BEFORE start command so drive starts at correct speed
     if len(profile.Setpoint) > 0 {
-        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), uint16(int(actualSpeedSet)))
+        _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), uint16(int(actualSpeedSet)))
         if err != nil {
             return err
         }
     }
     if len(profile.Setpoint) > 1 {
-        _, err = conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[1]), uint16(int(actualSpeedSet*float64(profile.SpeedPresetMultiplier))))
+        _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[1]), uint16(int(actualSpeedSet*float64(profile.SpeedPresetMultiplier))))
         if err != nil {
             return err
         }
+    }
+    _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Control), uint16(profile.StartValue))
+    if err != nil {
+        return err
     }
     return nil
 }
