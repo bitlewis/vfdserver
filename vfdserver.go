@@ -412,6 +412,10 @@ func manageVFDConnection(vfd *DriveConfig) {
             time.Sleep(5 * time.Second)
             conn.mu.Lock()
             _, err := conn.client.ReadHoldingRegisters(context.Background(), 0, 1)
+            if err == nil && vfd.DriveType == "CFW500" {
+                // CFW500: Continuously write P0222=4 to keep SoftPLC speed control active
+                conn.client.WriteSingleRegister(context.Background(), 222, 4)
+            }
             conn.mu.Unlock()
             if err != nil {
                 log.Printf("Lost connection to %s: %v", ip, err)
