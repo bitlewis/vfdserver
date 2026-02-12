@@ -368,10 +368,22 @@ func manageVFDConnection(vfd *DriveConfig) {
                 vfdConnectionsMu.Lock()
                 vfdConnections[ip] = conn
                 vfdConnectionsMu.Unlock()
-                // CFW500: Write P0222=4 on connect to activate SoftPLC speed control
+                // CFW500: Ensure P0222=12 (Ethernet mode) for SoftPLC speed control via P1012
                 if vfd.DriveType == "CFW500" {
                     conn.mu.Lock()
-                    conn.client.WriteSingleRegister(context.Background(), 222, 4)
+                    res, err := conn.client.ReadHoldingRegisters(context.Background(), 222, 1)
+                    if err == nil && len(res) >= 2 {
+                        p0222 := uint16(res[0])<<8 | uint16(res[1])
+                        if p0222 != 12 {
+                            log.Printf("CFW500 %s: P0222=%d (expected 12), recovering...", ip, p0222)
+                            conn.client.WriteSingleRegister(context.Background(), 1011, 0) // stop
+                            time.Sleep(3 * time.Second)
+                            conn.client.WriteSingleRegister(context.Background(), 222, 12)
+                            conn.client.WriteSingleRegister(context.Background(), 1011, 1) // start
+                            time.Sleep(3 * time.Second)
+                            log.Printf("CFW500 %s: P0222 restored to 12 (Ethernet mode)", ip)
+                        }
+                    }
                     conn.mu.Unlock()
                 }
                 if wasUnavailable {
@@ -412,10 +424,6 @@ func manageVFDConnection(vfd *DriveConfig) {
             time.Sleep(5 * time.Second)
             conn.mu.Lock()
             _, err := conn.client.ReadHoldingRegisters(context.Background(), 0, 1)
-            if err == nil && vfd.DriveType == "CFW500" {
-                // CFW500: Continuously write P0222=4 to keep SoftPLC speed control active
-                conn.client.WriteSingleRegister(context.Background(), 222, 4)
-            }
             conn.mu.Unlock()
             if err != nil {
                 log.Printf("Lost connection to %s: %v", ip, err)
@@ -861,7 +869,7 @@ func setFanSpeed(ip string, setspeed float64) error {
     conn.mu.Lock()
     defer conn.mu.Unlock()
     actualSpeedSet := applyFreqCalc(setspeed, profile.SetFreqCalc)
-    // Write speed reference BEFORE start command so drive starts at correct speed
+    // Write speed reference BEFORE start command
     if len(profile.Setpoint) > 0 {
         _, err := conn.client.WriteSingleRegister(context.Background(), uint16(profile.Setpoint[0]), uint16(int(actualSpeedSet)))
         if err != nil {
