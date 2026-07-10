@@ -5,288 +5,521 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@500..900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>VFD Control</title>
     <style>
-        /* ============ Tokens ============ */
+        /* ================= Design tokens (shared kit with pduserver) ================= */
         :root {
-            --bg: #edf0f4;
+            --bg: #edf1f5;
             --surface: #ffffff;
-            --surface2: #f3f5f8;
-            --border: #d9dfe7;
-            --ink: #1b2330;
-            --muted: #5e6b7d;
-            --run: #1e9e62;
-            --amber: #d07b00;
-            --fault: #d43d3d;
-            --off: #76808f;
-            --info: #2f6fd0;
-            --accent: #0d7d90;
-            --lamp-glow: rgba(30, 158, 98, 0.55);
-            --shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+            --surface-2: #f4f7fa;
+            --line: #dbe2ea;
+            --line-strong: #c3cdd8;
+            --text: #17212c;
+            --muted: #5b6a79;
+            --faint: #93a1af;
+            --accent: #0e7fc6;
+            --accent-soft: rgba(14, 127, 198, .10);
+            --ok: #189a51;
+            --ok-soft: rgba(24, 154, 81, .12);
+            --warn: #d98a0b;
+            --warn-soft: rgba(217, 138, 11, .13);
+            --danger: #cf4237;
+            --danger-soft: rgba(207, 66, 55, .10);
+            --idle: #d5dce3;
+            --idle-text: #6b7a89;
+            --meter-bg: #0a0f0d;
+            --meter-dim: #1c2b22;
+            --meter-glow: #46e389;
+            --shadow: 0 1px 2px rgba(20, 30, 40, .05), 0 6px 20px rgba(20, 30, 40, .07);
+            --radius: 10px;
+            --radius-s: 6px;
+            --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+            --font-display: "Doto", "IBM Plex Mono", monospace;
         }
         body.dark-mode {
-            --bg: #12151a;
-            --surface: #1a1f26;
-            --surface2: #222933;
-            --border: #2d3642;
-            --ink: #e7ecf2;
-            --muted: #909dad;
-            --run: #31d383;
-            --amber: #f0a63a;
-            --fault: #f0564f;
-            --off: #79879a;
-            --info: #5aa2f0;
-            --accent: #3fc1d3;
-            --lamp-glow: rgba(49, 211, 131, 0.55);
-            --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            --bg: #0e1216;
+            --surface: #151b21;
+            --surface-2: #1b232c;
+            --line: #242e39;
+            --line-strong: #35424f;
+            --text: #e5ecf2;
+            --muted: #97a5b2;
+            --faint: #5e6c7a;
+            --accent: #45aeeb;
+            --accent-soft: rgba(69, 174, 235, .13);
+            --ok: #2cb865;
+            --ok-soft: rgba(44, 184, 101, .14);
+            --warn: #e8a53a;
+            --warn-soft: rgba(232, 165, 58, .15);
+            --danger: #d95549;
+            --danger-soft: rgba(217, 85, 73, .14);
+            --idle: #26303a;
+            --idle-text: #7b8894;
+            --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
         }
 
         * { box-sizing: border-box; }
-        html { scrollbar-color: var(--off) transparent; }
+        html { scroll-behavior: smooth; }
         body {
             margin: 0;
-            min-height: 100vh;
-            font-family: "IBM Plex Sans", Arial, sans-serif;
+            font-family: var(--font-ui);
             font-size: 14px;
             background: var(--bg);
-            color: var(--ink);
-            transition: background 0.2s, color 0.2s;
+            color: var(--text);
+            transition: background .25s ease, color .25s ease;
         }
-        button { font-family: inherit; }
-        code, .mono { font-family: "IBM Plex Mono", monospace; }
-        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        a { color: var(--accent); }
+        button { font-family: var(--font-ui); }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-        /* ============ Top bar ============ */
+        /* ================= Top bar ================= */
         .topbar {
-            display: flex; align-items: center; justify-content: space-between; gap: 16px;
-            padding: 12px 22px 8px 22px; flex-wrap: wrap;
-        }
-        .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        h1 {
-            margin: 0; font-family: "Doto", monospace; font-optical-sizing: auto;
-            font-weight: 900; font-size: 27px; letter-spacing: 0.04em; white-space: nowrap;
-            overflow: hidden; text-overflow: ellipsis;
-        }
-        .ws-chip {
-            display: inline-flex; align-items: center; gap: 7px;
-            font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
-            padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
-        }
-        .ws-chip .lamp { width: 8px; height: 8px; }
-        .ws-chip.live { color: var(--run); border-color: var(--run); }
-        .ws-chip.stale { color: var(--amber); border-color: var(--amber); }
-        .topbar-actions { display: flex; align-items: center; gap: 8px; }
-
-        /* ============ Buttons ============ */
-        .btn {
-            border: none; border-radius: 7px; padding: 9px 16px; font-size: 14px; font-weight: 600;
-            cursor: pointer; color: #fff; transition: filter 0.12s, transform 0.05s, opacity 0.12s;
-        }
-        .btn:hover { filter: brightness(1.1); }
-        .btn:active { transform: translateY(1px); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
-        .btn.set-speed, .btn.reconnect { background: var(--accent); }
-        .btn.start { background: var(--run); }
-        .btn.stop { background: var(--amber); }
-        .btn.fanhold { background: var(--fault); }
-        .btn.curtail { background: #ff6b6b; }
-        .btn.curtail.active { background: #51cf66; }
-        .btn.subtle {
-            background: var(--surface2); color: var(--ink); border: 1px solid var(--border); font-weight: 500;
-        }
-        .quickbutton {
-            font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer;
-            background: transparent; transition: background 0.12s, color 0.12s;
-        }
-        .quickbutton.green { color: var(--run); border: 1px solid var(--run); }
-        .quickbutton.green:hover { background: var(--run); color: #fff; }
-        .quickbutton.orange { color: var(--amber); border: 1px solid var(--amber); }
-        .quickbutton.orange:hover { background: var(--amber); color: #fff; }
-
-        /* ============ Control panel ============ */
-        .control-panel {
-            position: sticky; top: 0; z-index: 10;
-            display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap;
-            margin: 0 14px; padding: 12px 18px 14px 18px;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+            padding: 10px 18px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
             box-shadow: var(--shadow);
         }
-        .cluster { display: flex; flex-direction: column; gap: 7px; }
-        .cluster-label {
-            font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+        .brand { display: flex; flex-direction: column; gap: 1px; min-width: 150px; }
+        .brand h1 {
+            margin: 0;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 26px;
+            letter-spacing: .04em;
+            line-height: 1.05;
+            white-space: nowrap;
         }
-        .cluster-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .speed-field { display: flex; align-items: center; }
+        .brand .brand-sub {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: .34em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .brand-line { display: flex; align-items: center; gap: 10px; }
+        .clock {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--faint);
+            letter-spacing: .06em;
+        }
+        .ws-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: .18em;
+            color: var(--faint);
+        }
+        .ws-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .ws-chip.live { color: var(--ok); }
+        .ws-chip.stale { color: var(--warn); }
+
+        /* Signature: site airflow meter (always a dark LCD panel, both themes) */
+        .meter {
+            display: flex; align-items: center; gap: 18px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px, transparent 1px 3px),
+                var(--meter-bg);
+            border: 1px solid #1f2a24;
+            border-radius: var(--radius);
+            padding: 8px 18px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,.6);
+            min-width: 250px;
+        }
+        .meter-main { display: flex; flex-direction: column; }
+        .meter-label {
+            font-family: var(--font-mono);
+            font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
+            color: #57705f;
+        }
+        .meter-value {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 32px;
+            line-height: 1;
+            color: var(--meter-glow);
+            text-shadow: 0 0 14px rgba(70, 227, 137, .5);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .meter-side { display: flex; flex-direction: column; gap: 4px; border-left: 1px solid var(--meter-dim); padding-left: 16px; }
+        .meter-stat {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: #7ba98c;
+            white-space: nowrap;
+        }
+        .meter-stat b { color: var(--meter-glow); font-weight: 600; }
+
+        /* Actions */
+        .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+        .actions-label {
+            font-family: var(--font-mono);
+            font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+            color: var(--faint); margin-right: 2px;
+        }
+        .btn {
+            border: 1px solid transparent;
+            border-radius: var(--radius-s);
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #fff;
+            transition: filter .15s ease, transform .1s ease, background .2s ease;
+        }
+        .btn:hover { filter: brightness(1.08); }
+        .btn:active { transform: translateY(1px); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; filter: none; transform: none; }
+        .btn-on     { background: var(--ok); }
+        .btn-off    { background: var(--warn); }
+        .btn-hold   { background: var(--danger); }
+        .btn-accent { background: var(--accent); }
+        .btn.curtail { background: #ff6b6b; }
+        .btn.curtail.active { background: #51cf66; }
+        .btn-ghost {
+            background: var(--surface-2);
+            color: var(--text);
+            border-color: var(--line-strong);
+            font-weight: 500;
+        }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); filter: none; }
+        .checklabel {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 13px; color: var(--muted); cursor: pointer;
+            padding: 6px 4px; user-select: none;
+        }
+        input[type="checkbox"] { accent-color: var(--ok); width: 15px; height: 15px; cursor: pointer; }
+
+        .speed-field { display: inline-flex; align-items: stretch; }
         .speed-field input[type="number"] {
-            width: 88px; padding: 8px 10px; font-family: "IBM Plex Mono", monospace; font-size: 14px;
-            text-align: right; color: var(--ink); background: var(--surface2);
-            border: 1px solid var(--border); border-radius: 7px 0 0 7px; border-right: none;
+            width: 82px; padding: 7px 9px;
+            font-family: var(--font-mono); font-size: 13px; text-align: right;
+            color: var(--text); background: var(--surface-2);
+            border: 1px solid var(--line-strong); border-right: none;
+            border-radius: var(--radius-s) 0 0 var(--radius-s);
         }
         .speed-field input[type="number"]:focus { outline: none; border-color: var(--accent); }
-        .speed-legend {
-            font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
-            padding: 9px 8px; background: var(--surface2);
-            border: 1px solid var(--border); border-left: none; border-radius: 0 7px 7px 0;
+        .speed-unit {
+            display: flex; align-items: center;
+            font-family: var(--font-mono); font-size: 11px; color: var(--faint);
+            padding: 0 8px; background: var(--surface-2);
+            border: 1px solid var(--line-strong); border-left: none;
+            border-radius: 0 var(--radius-s) var(--radius-s) 0;
         }
-        .checkline { display: flex; align-items: center; gap: 7px; padding: 8px 0; cursor: pointer; user-select: none; }
-        input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
-        .cluster.right { margin-left: auto; }
 
-        /* ============ Drives + events layout ============ */
-        .drives-box { display: flex; gap: 14px; padding: 14px; align-items: flex-start; }
-        .drives-panel { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-        .control-events-panel {
-            flex: 0 0 250px; max-height: calc(100vh - 40px); overflow-y: auto;
-            position: sticky; top: 84px;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-            padding: 14px 16px; box-shadow: var(--shadow);
+        /* ================= Layout ================= */
+        .layout {
+            display: flex; gap: 14px; align-items: flex-start;
+            padding: 14px 18px 60px 18px;
+            max-width: 3000px; margin: 0 auto;
         }
-        .control-events-panel h2 {
-            margin: 0 0 6px 0; font-family: "Doto", monospace; font-weight: 900; font-size: 18px; letter-spacing: 0.04em;
-        }
-        .control-event { padding: 9px 0; border-bottom: 1px dashed var(--border); }
-        .control-event:last-child { border-bottom: none; }
-        .timestamp {
-            display: block; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); margin-bottom: 4px;
-        }
-        .event-box {
-            display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
-            background: var(--info); color: #fff; margin-bottom: 4px;
-        }
-        .devices-box {
-            display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
-            padding: 2px 6px; border-radius: 5px; margin: 1px 2px 1px 0; color: #fff;
-        }
-        .devices-box.ok { background: var(--run); }
-        .devices-box.fail { background: var(--fault); }
+        .groups { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 
-        /* ============ Group strip ============ */
-        .group { display: flex; flex-direction: column; gap: 6px; }
+        /* ================= Group cards ================= */
+        .group {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
         .group-head {
-            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
-            padding: 8px 14px; box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 9px 14px;
+            cursor: pointer;
+            transition: background .15s ease;
         }
-        .group-title {
-            display: flex; align-items: center; gap: 10px; flex: 1 1 220px; min-width: 180px;
-            cursor: pointer; user-select: none;
+        .group-head:hover { background: var(--surface-2); }
+        .disclosure {
+            width: 18px; height: 18px; flex: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            color: var(--faint);
+            transition: transform .25s ease;
+            font-size: 11px;
         }
-        .group-caret {
-            font-size: 12px; color: var(--muted); transition: transform 0.18s; display: inline-block;
-        }
-        .group.open .group-caret { transform: rotate(90deg); }
+        .group.collapsed .disclosure { transform: rotate(-90deg); }
         .group-name {
-            font-family: "Doto", monospace; font-weight: 900; font-size: 18px; letter-spacing: 0.05em;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 17px;
+            letter-spacing: .05em;
+            white-space: nowrap;
+            min-width: 90px;
         }
-        .group-agg {
-            display: flex; align-items: baseline; gap: 14px;
-            font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--muted);
+        .group-stats { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .stat { display: flex; flex-direction: column; gap: 0; }
+        .stat .k {
+            font-family: var(--font-mono);
+            font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+            color: var(--faint);
         }
-        .group-agg b { color: var(--ink); font-weight: 600; }
-        .group-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-        .select-all-label {
-            display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
-            cursor: pointer; user-select: none; white-space: nowrap;
+        .stat .v {
+            font-family: var(--font-mono);
+            font-size: 13px; font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
         }
+        .chip {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 11px; font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-variant-numeric: tabular-nums;
+        }
+        .chip-ok  { background: var(--ok-soft); color: var(--ok); }
+        .chip-bad { background: var(--danger-soft); color: var(--danger); }
+        .group-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .qbtn {
+            border: none; border-radius: var(--radius-s);
+            font-size: 12px; font-weight: 600; color: #fff;
+            padding: 5px 12px; cursor: pointer;
+            transition: filter .15s ease, transform .1s ease;
+        }
+        .qbtn:hover { filter: brightness(1.1); }
+        .qbtn:active { transform: translateY(1px); }
+        .qb-on  { background: var(--ok); }
+        .qb-off { background: var(--warn); }
 
-        /* ============ Drive rows ============ */
-        .drive-list { display: none; flex-direction: column; gap: 5px; margin-left: 16px; padding-left: 12px; border-left: 2px solid var(--border); }
-        .drive-item {
-            display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-            padding: 7px 12px; transition: border-color 0.15s;
+        .group-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease; }
+        .group.collapsed .group-body { grid-template-rows: 0fr; }
+        .group-body-inner { overflow: hidden; min-height: 0; }
+        .drive-list { padding: 4px 10px 10px 10px; display: flex; flex-direction: column; gap: 5px; }
+
+        /* ================= Drive rows ================= */
+        .drive-card {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 6px 10px;
+            overflow-x: auto;
+            transition: border-color .25s ease;
         }
-        .drive-item:hover { border-color: var(--off); }
-        .drive-item.stale-data { border-left: 3px solid var(--amber); opacity: 0.75; }
-        .drive-id { flex: 1 1 250px; min-width: 230px; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
-        .drive-fan { font-family: "Doto", monospace; font-weight: 900; font-size: 15px; white-space: nowrap; }
-        .drive-desc { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .drive-ip { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+        .drive-card.stale-data { border-color: var(--warn); }
+        .drive-card.unhealthy { border-color: var(--danger); }
+        .drive-meta { flex: none; width: 190px; display: flex; align-items: center; gap: 9px; }
+        .drive-meta .cols { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+        .drive-meta .row1 { display: flex; align-items: baseline; gap: 7px; }
+        .drive-num {
+            font-family: var(--font-mono);
+            font-size: 13px; font-weight: 600; white-space: nowrap;
+        }
+        .drive-sub {
+            font-family: var(--font-mono);
+            font-size: 10px; color: var(--faint);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .readout { flex: none; display: flex; gap: 6px; }
         .cell {
-            font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
-            font-size: 13px; text-align: right; padding: 4px 8px;
-            background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; white-space: nowrap;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 3px 9px 4px 9px;
+            display: flex; flex-direction: column;
+            min-width: 72px;
         }
-        .cell small { font-size: 9.5px; color: var(--muted); margin-left: 4px; letter-spacing: 0.04em; }
-        .cell.setpoint { border-style: dashed; color: var(--muted); }
-        .cell.w-hz  { flex: 0 0 96px; }
-        .cell.w-rpm { flex: 0 0 96px; }
-        .cell.w-cfm { flex: 0 0 112px; }
-        .cell.w-amp { flex: 0 0 76px; }
-        .cell.w-pct { flex: 0 0 78px; }
-        .drive-spin { flex: 0 0 20px; text-align: center; color: var(--muted); }
-        .counter-spin { animation: fa-spin-reverse 2s infinite linear; }
-        @keyframes fa-spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+        .cell .k {
+            font-family: var(--font-mono);
+            font-size: 8px; letter-spacing: .18em; text-transform: uppercase;
+            color: var(--faint);
+        }
+        .cell .v {
+            font-family: var(--font-mono);
+            font-size: 12.5px; font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .cell-set .v { color: var(--muted); }
+        .cell-hz .v { color: var(--ok); }
+        .cell-cfm { min-width: 90px; }
 
-        /* status lamp */
-        .lamp {
-            width: 10px; height: 10px; border-radius: 50%;
-            background: currentColor; box-shadow: 0 0 7px currentColor; flex: none;
-        }
-        .drive-status {
-            flex: 1 0 170px; display: flex; align-items: center; gap: 8px;
-            font-size: 12.5px; font-weight: 600; white-space: nowrap;
-        }
-        .drive-status.st-run   { color: var(--run); }
-        .drive-status.st-amber { color: var(--amber); }
-        .drive-status.st-fault { color: var(--fault); }
-        .drive-status.st-off   { color: var(--off); }
-        .drive-status.st-info  { color: var(--info); }
-        .drive-status .stale-note { font-weight: 400; color: var(--muted); }
-        .drive-status.st-run .lamp { animation: lampPulse 2.4s ease-in-out infinite; }
-        @keyframes lampPulse {
-            0%, 100% { box-shadow: 0 0 4px currentColor; }
-            50%      { box-shadow: 0 0 11px currentColor; }
-        }
+        /* Fan icon (inline SVG, no icon-font dependency) */
+        .fanicon { width: 17px; height: 17px; flex: none; color: var(--faint); }
+        .fanicon.cw  { animation: fanspin 1.5s linear infinite; color: var(--ok); }
+        .fanicon.ccw { animation: fanspin 1.5s linear infinite reverse; color: var(--ok); }
+        @keyframes fanspin { to { transform: rotate(360deg); } }
 
+        /* Status + connect */
+        .drive-health { margin-left: auto; flex: none; display: flex; align-items: center; gap: 8px; padding-left: 6px; }
+        .health-chip {
+            font-family: var(--font-mono);
+            font-size: 10px; font-weight: 600; letter-spacing: .1em;
+            padding: 3px 9px; border-radius: 20px;
+            white-space: nowrap;
+            transition: background .3s ease, color .3s ease;
+        }
+        .health-chip.st-run   { background: var(--ok-soft); color: var(--ok); }
+        .health-chip.st-amber { background: var(--warn-soft); color: var(--warn); }
+        .health-chip.st-fault { background: var(--danger-soft); color: var(--danger); }
+        .health-chip.st-off   { background: var(--idle); color: var(--idle-text); }
+        .health-chip.st-info  { background: var(--accent-soft); color: var(--accent); }
+        .stale-note { font-family: var(--font-mono); font-size: 10px; color: var(--warn); white-space: nowrap; }
         .conn-btn {
-            flex: none; margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 4px 10px;
-            border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
-            background: transparent; transition: background 0.12s, color 0.12s;
+            border: 1px solid var(--line-strong); border-radius: var(--radius-s);
+            background: transparent; color: var(--muted);
+            font-size: 11px; font-weight: 600; padding: 4px 10px; cursor: pointer;
+            transition: background .15s ease, color .15s ease, border-color .15s ease;
         }
-        .conn-btn.connect { color: var(--run); border-color: var(--run); }
-        .conn-btn.connect:hover { background: var(--run); color: #fff; }
-        .conn-btn.disconnect { color: var(--muted); }
-        .conn-btn.disconnect:hover { background: var(--fault); border-color: var(--fault); color: #fff; }
-        .conn-btn:disabled { opacity: 0.45; cursor: wait; }
+        .conn-btn.connect { color: var(--ok); border-color: var(--ok); }
+        .conn-btn.connect:hover { background: var(--ok); color: #fff; }
+        .conn-btn.disconnect:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+        .conn-btn:disabled { opacity: .45; cursor: wait; }
 
-        /* ============ API modal ============ */
-        #apiModal {
+        /* ================= Events panel ================= */
+        .events-panel {
+            flex: 0 0 300px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 14px 14px 8px 14px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            position: sticky; top: 74px;
+        }
+        .events-panel h2 {
+            margin: 0 0 10px 0;
+            font-family: var(--font-display);
+            font-weight: 800; font-size: 18px; letter-spacing: .05em;
+        }
+        .control-event {
+            border-left: 3px solid var(--faint);
+            padding: 6px 0 8px 10px;
+            margin-bottom: 8px;
+        }
+        .control-event.ev-ok  { border-left-color: var(--ok); }
+        .control-event.ev-bad { border-left-color: var(--danger); }
+        .event-time { font-family: var(--font-mono); font-size: 10px; color: var(--faint); }
+        .event-action { font-size: 13px; font-weight: 600; margin: 1px 0 4px 0; }
+        .pchips { display: flex; flex-wrap: wrap; gap: 3px; }
+        .pchip {
+            font-family: var(--font-mono);
+            font-size: 10px; padding: 1px 6px; border-radius: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .pchip-ok  { background: var(--ok-soft); color: var(--ok); }
+        .pchip-bad { background: var(--danger-soft); color: var(--danger); }
+        .events-empty { color: var(--faint); font-size: 12px; padding: 8px 0 14px 0; }
+
+        /* ================= API button + modal ================= */
+        #apiModalBtn {
+            position: fixed; bottom: 22px; right: 26px; z-index: 1100;
+            background: var(--surface); color: var(--muted);
+            border: 1px solid var(--line-strong);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em;
+            box-shadow: var(--shadow); cursor: pointer;
+            transition: color .15s ease, border-color .15s ease;
+        }
+        #apiModalBtn:hover { color: var(--accent); border-color: var(--accent); }
+
+        .modal {
             display: none; position: fixed; z-index: 1000; inset: 0;
-            overflow: auto; background: rgba(10, 14, 18, 0.6); backdrop-filter: blur(2px);
+            background: rgba(8, 12, 16, .6);
+            overflow-y: auto; padding: 30px 16px;
+            backdrop-filter: blur(2px);
         }
         .modal-card {
-            background: var(--surface); color: var(--ink); margin: 4% auto; padding: 28px 26px 24px 26px;
-            border: 1px solid var(--border); border-radius: 12px; max-width: 640px; position: relative;
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35); font-size: 15px; line-height: 1.5;
+            background: var(--surface);
+            color: var(--text);
+            margin: 0 auto; padding: 26px 28px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            max-width: 680px;
+            position: relative;
+            box-shadow: 0 12px 48px rgba(0,0,0,.35);
+            animation: modal-in .2s ease;
         }
-        .modal-card h2 { margin-top: 0; font-family: "Doto", monospace; font-weight: 900; letter-spacing: 0.04em; }
-        .modal-card h3 { margin: 20px 0 6px 0; font-size: 16px; }
+        @keyframes modal-in { from { opacity: 0; transform: translateY(8px); } }
         .modal-close {
-            position: absolute; top: 10px; right: 14px; background: none; border: none;
-            font-size: 28px; color: var(--muted); cursor: pointer; line-height: 1;
+            position: absolute; top: 10px; right: 14px;
+            background: none; border: none;
+            font-size: 26px; line-height: 1;
+            color: var(--faint); cursor: pointer;
         }
-        .modal-close:hover { color: var(--ink); }
+        .modal-close:hover { color: var(--text); }
+        .modal-card h2 {
+            margin: 0 0 14px 0;
+            font-family: var(--font-display);
+            font-weight: 800; font-size: 22px; letter-spacing: .04em;
+        }
+        .modal-card h3 {
+            margin: 20px 0 6px 0;
+            font-size: 15px;
+            font-family: var(--font-mono); font-weight: 600;
+        }
+        .modal-card h3 .method {
+            font-size: 10px; letter-spacing: .1em;
+            padding: 2px 7px; border-radius: 4px;
+            background: var(--ok-soft); color: var(--ok);
+            vertical-align: 2px; margin-left: 6px;
+        }
+        .modal-card h3 .method.post { background: rgba(217, 138, 11, .15); color: var(--warn); }
+        .modal-card p { margin: 4px 0 8px 0; color: var(--muted); font-size: 13px; }
         .codeblock {
-            background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
-            padding: 10px 12px; font-size: 12.5px; margin-bottom: 8px; overflow-x: auto;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-s);
+            padding: 10px 12px;
+            font-family: var(--font-mono); font-size: 12px;
+            overflow-x: auto; margin: 6px 0 10px 0;
+            white-space: pre;
+            line-height: 1.5;
         }
-        .modal-card ul { font-size: 14px; margin: 6px 0 12px 0; }
-        .modal-card .note { font-size: 11px; color: var(--muted); }
+        .modal-card ul { font-size: 13px; color: var(--muted); margin: 6px 0 10px 0; padding-left: 20px; }
+        .modal-card ul b { color: var(--text); font-family: var(--font-mono); font-weight: 600; font-size: 12px; }
+        .modal-card code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 
-        /* ============ Responsive & motion ============ */
-        @media (max-width: 900px) {
-            .drives-box { flex-direction: column; }
-            .control-events-panel { position: static; flex: none; width: 100%; max-height: 320px; }
-            .drive-status { flex-basis: 100%; }
-            .conn-btn { margin-left: 0; }
+        /* ================= Toasts ================= */
+        #toast-host {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            z-index: 3000; display: flex; flex-direction: column; gap: 8px; align-items: center;
+            pointer-events: none;
         }
+        .toast {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--line-strong);
+            border-left: 4px solid var(--accent);
+            border-radius: var(--radius-s);
+            padding: 10px 18px;
+            font-size: 13px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.3);
+            animation: toast-in .25s ease;
+            max-width: 480px;
+        }
+        .toast.ok    { border-left-color: var(--ok); }
+        .toast.error { border-left-color: var(--danger); }
+        @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
+        .toast.hide { opacity: 0; transition: opacity .4s ease; }
+
+        /* ================= Responsive ================= */
+        @media (max-width: 1150px) {
+            .layout { flex-direction: column; }
+            .events-panel { position: static; flex: none; width: 100%; max-height: 340px; }
+        }
+        @media (max-width: 900px) {
+            .meter { min-width: 0; }
+            .meter-value { font-size: 24px; }
+            .drive-card { flex-wrap: wrap; }
+            .drive-health { margin-left: 0; }
+        }
+        @media (max-width: 768px) {
+            .readout { flex-wrap: wrap; }
+            .group-actions { margin-left: 0; }
+        }
+        @media (max-width: 480px) {
+            .topbar { gap: 10px; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
-            .fa-spin, .counter-spin { animation: none; }
-            .drive-status.st-run .lamp { animation: none; }
-            .group-caret, .drive-item, .btn { transition: none; }
+            *, *::before, *::after { transition: none !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+            html { scroll-behavior: auto; }
         }
     </style>
     <script>
@@ -306,9 +539,11 @@
         let lastWsMessage = 0;
 
         // Persistent DOM references so live values update in place (no flicker)
-        let groupEls = {};   // group -> { root, list, caret, cfmEl, pctEl, selectAll }
-        let driveEls = {};   // ip -> { row, checkbox, setHz, outHz, rpm, cfm, amps, pct, spin, status, connBtn }
+        let groupEls = {};   // group -> { root, cfmEl, pctEl, runEl, selectAll }
+        let driveEls = {};   // ip -> { row, checkbox, cells..., spin, chip, staleNote, connBtn }
         let structureKey = '';
+
+        const FAN_SVG = `<svg class="fanicon" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="12" cy="12" r="2.4"/><ellipse cx="12" cy="5.8" rx="2.9" ry="4.2"/><ellipse cx="12" cy="5.8" rx="2.9" ry="4.2" transform="rotate(120 12 12)"/><ellipse cx="12" cy="5.8" rx="2.9" ry="4.2" transform="rotate(240 12 12)"/></g></svg>`;
 
         // === 2. App Config and WebSocket Setup ===
         function whenReady(fn) {
@@ -328,7 +563,7 @@
             if (cfg.bindPort) bindPort = cfg.bindPort;
 
             document.title = siteName + " VFD Control";
-            document.querySelector('h1').textContent = siteName + " VFD Control Panel";
+            document.getElementById('siteName').textContent = siteName;
 
             // Show/hide Fan Hold button based on configuration
             const fanholdButton = document.getElementById('fanhold-button');
@@ -374,9 +609,29 @@
             if (!chip) return;
             chip.classList.toggle('live', live);
             chip.classList.toggle('stale', !live);
-            chip.lastChild.textContent = live ? 'LIVE' : 'STALE';
+            chip.textContent = live ? 'LIVE' : 'STALE';
         }
         setInterval(() => setLiveIndicator(Date.now() - lastWsMessage < 4000), 2000);
+
+        // Toasts (kit-standard, replaces alert() for notifications)
+        function toast(message, kind = 'info', duration = 4000) {
+            const host = document.getElementById('toast-host');
+            if (!host) { alert(message); return; }
+            const el = document.createElement('div');
+            el.className = `toast ${kind}`;
+            el.textContent = message;
+            host.appendChild(el);
+            setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 450); }, duration);
+        }
+
+        // Live clock in the masthead
+        function tickClock() {
+            const el = document.getElementById('clock');
+            if (!el) return;
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        }
 
         // === 3. UI Update Functions ===
         const STATUS_CLASSES = ['st-run', 'st-amber', 'st-fault', 'st-off', 'st-info'];
@@ -411,6 +666,16 @@
             return groups;
         }
 
+        function updateFleetMeter() {
+            const totalCfm = lastDriveData.reduce((sum, d) => sum + (parseFloat(d.actualCfm) || 0), 0);
+            const running = lastDriveData.filter(d => d.status === 'Running' && d.actualSpeed > 0).length;
+            const avgPct = lastDriveData.length
+                ? lastDriveData.reduce((sum, d) => sum + (parseFloat(d.actualPercent) || 0), 0) / lastDriveData.length : 0;
+            document.getElementById('fleetCfm').textContent = totalCfm.toLocaleString('en-US') + ' CFM';
+            document.getElementById('fleetFans').innerHTML = `FANS <b>${running}/${lastDriveData.length}</b> ON`;
+            document.getElementById('fleetAvg').innerHTML = `AVG <b>${avgPct.toFixed(1)} %</b>`;
+        }
+
         function updateUI(data) {
             lastDriveData = Array.isArray(data) ? data : [];
             // Update reconnect button state based on Unavailable VFDs
@@ -422,6 +687,7 @@
                     ? 'No Unavailable/Disconnected VFDs to reconnect'
                     : 'Disconnect then reconnect all Unavailable/Disconnected VFDs';
             }
+            updateFleetMeter();
 
             const groups = groupDrives(lastDriveData);
             const key = JSON.stringify(Object.keys(groups).map(g => [g, groups[g].map(d => d.ip)]));
@@ -445,59 +711,66 @@
 
             for (let group in groups) {
                 const groupDiv = document.createElement("div");
-                groupDiv.className = "group" + (expandedGroups[group] ? " open" : "");
+                groupDiv.className = "group" + (expandedGroups[group] ? "" : " collapsed");
 
                 const head = document.createElement("div");
                 head.className = "group-head";
-
-                const title = document.createElement("div");
-                title.className = "group-title";
-                title.innerHTML = `<span class="group-caret">&#9654;</span><span class="group-name">${groupLabel} ${group}</span>
-                    <span class="group-agg">total <b class="agg-cfm">0</b> CFM &middot; avg <b class="agg-pct">0.0</b> %</span>`;
-                title.addEventListener("click", function () {
-                    const list = groupDiv.querySelector(".drive-list");
-                    const opening = list.style.display !== "flex";
-                    list.style.display = opening ? "flex" : "none";
-                    groupDiv.classList.toggle("open", opening);
+                const selectAllChecked = groups[group].every(drive => currentCheckboxStates[drive.ip] === true);
+                head.innerHTML = `
+                    <span class="disclosure">&#9660;</span>
+                    <span class="group-name">${groupLabel} ${group}</span>
+                    <div class="group-stats">
+                        <div class="stat"><span class="k">Airflow</span><span class="v agg-cfm">&mdash;</span></div>
+                        <div class="stat"><span class="k">Avg Speed</span><span class="v agg-pct">&mdash;</span></div>
+                        <span class="chip agg-run chip-ok">&mdash;</span>
+                    </div>
+                    <div class="group-actions">
+                        <button class="qbtn qb-on" data-group="${group}" data-action="Start">Start</button>
+                        <button class="qbtn qb-off" data-group="${group}" data-action="Stop">Stop</button>
+                        <label class="checklabel"><input type="checkbox" class="select-all" data-group="${group}" ${selectAllChecked ? 'checked' : ''}> Select all</label>
+                    </div>
+                `;
+                head.addEventListener("click", function (e) {
+                    if (e.target.closest('.group-actions')) return; // buttons/checkbox don't toggle the group
+                    const opening = groupDiv.classList.contains("collapsed");
+                    groupDiv.classList.toggle("collapsed", !opening);
                     expandedGroups[group] = opening;
                     localStorage.setItem("expandedGroups", JSON.stringify(expandedGroups));
                 });
 
-                const tools = document.createElement("div");
-                tools.className = "group-tools";
-                const selectAllChecked = groups[group].every(drive => currentCheckboxStates[drive.ip] === true);
-                tools.innerHTML = `
-                    <button class="quickbutton green" onclick="quickGroupControl('${group}', 'Start')">Start</button>
-                    <button class="quickbutton orange" onclick="quickGroupControl('${group}', 'Stop')">Stop</button>
-                    <label class="select-all-label"><input type="checkbox" class="select-all" data-group="${group}" ${selectAllChecked ? 'checked' : ''}> Select all</label>
-                `;
-
-                head.appendChild(title);
-                head.appendChild(tools);
-
+                const body = document.createElement("div");
+                body.className = "group-body";
+                const bodyInner = document.createElement("div");
+                bodyInner.className = "group-body-inner";
                 const driveList = document.createElement("div");
                 driveList.className = "drive-list";
-                driveList.style.display = expandedGroups[group] ? "flex" : "none";
 
                 groups[group].forEach(drive => {
                     const row = document.createElement("div");
-                    row.className = "drive-item";
+                    row.className = "drive-card";
                     const checked = (drive.status !== 'Unknown') && (currentCheckboxStates[drive.ip] || false);
                     row.innerHTML = `
                         <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-group="${group}" ${checked ? 'checked' : ''}>
-                        <span class="drive-id">
-                            <span class="drive-fan">FAN ${drive.fanNumber}</span>
-                            <span class="drive-desc">${drive.fanDesc}</span>
-                            <span class="drive-ip">${drive.ip}</span>
-                        </span>
-                        <span class="cell setpoint w-hz"><span class="v"></span><small>SET Hz</small></span>
-                        <span class="cell w-hz"><span class="v"></span><small>Hz</small></span>
-                        <span class="cell w-rpm"><span class="v"></span><small>RPM</small></span>
-                        <span class="cell w-cfm"><span class="v"></span><small>CFM</small></span>
-                        <span class="cell w-amp"><span class="v"></span><small>A</small></span>
-                        <span class="cell w-pct"><span class="v"></span><small>%</small></span>
-                        <span class="drive-spin"><i class="fa fa-fan"></i></span>
-                        <span class="drive-status"><span class="lamp"></span><span class="st-text"></span>&nbsp;<span class="stale-note"></span></span>
+                        <div class="drive-meta">
+                            ${FAN_SVG}
+                            <div class="cols">
+                                <div class="row1"><span class="drive-num">FAN ${drive.fanNumber}</span></div>
+                                <span class="drive-sub">${drive.fanDesc}</span>
+                                <span class="drive-sub">${drive.ip}</span>
+                            </div>
+                        </div>
+                        <div class="readout">
+                            <div class="cell cell-set"><span class="k">Set</span><span class="v"><span class="n"></span> Hz</span></div>
+                            <div class="cell cell-hz"><span class="k">Output</span><span class="v"><span class="n"></span> Hz</span></div>
+                            <div class="cell"><span class="k">Speed</span><span class="v"><span class="n"></span> RPM</span></div>
+                            <div class="cell cell-cfm"><span class="k">Airflow</span><span class="v"><span class="n"></span> CFM</span></div>
+                            <div class="cell"><span class="k">Current</span><span class="v"><span class="n"></span> A</span></div>
+                            <div class="cell"><span class="k">Load</span><span class="v"><span class="n"></span> %</span></div>
+                        </div>
+                        <div class="drive-health">
+                            <span class="stale-note"></span>
+                            <span class="health-chip st-info">&mdash;</span>
+                        </div>
                     `;
                     const connBtn = document.createElement('button');
                     connBtn.className = 'conn-btn';
@@ -509,34 +782,42 @@
                             body: JSON.stringify({ ip: drive.ip })
                         }); // Wait for WebSocket update
                     };
-                    row.appendChild(connBtn);
+                    row.querySelector('.drive-health').appendChild(connBtn);
                     driveList.appendChild(row);
 
-                    const cells = row.querySelectorAll('.cell .v');
+                    const cells = row.querySelectorAll('.cell .n');
                     driveEls[drive.ip] = {
                         row: row,
                         checkbox: row.querySelector('.drive-checkbox'),
                         setHz: cells[0], outHz: cells[1], rpm: cells[2], cfm: cells[3], amps: cells[4], pct: cells[5],
-                        spin: row.querySelector('.drive-spin i'),
-                        status: row.querySelector('.drive-status'),
-                        stText: row.querySelector('.st-text'),
+                        spin: row.querySelector('.fanicon'),
+                        chip: row.querySelector('.health-chip'),
                         staleNote: row.querySelector('.stale-note'),
                         connBtn: connBtn
                     };
                 });
 
+                bodyInner.appendChild(driveList);
+                body.appendChild(bodyInner);
                 groupDiv.appendChild(head);
-                groupDiv.appendChild(driveList);
+                groupDiv.appendChild(body);
                 container.appendChild(groupDiv);
 
                 groupEls[group] = {
                     root: groupDiv,
                     cfmEl: head.querySelector('.agg-cfm'),
                     pctEl: head.querySelector('.agg-pct'),
+                    runEl: head.querySelector('.agg-run'),
                     selectAll: head.querySelector('.select-all')
                 };
             }
 
+            document.querySelectorAll(".qbtn").forEach(btn => {
+                btn.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    quickGroupControl(this.dataset.group, this.dataset.action);
+                });
+            });
             document.querySelectorAll(".select-all").forEach(checkbox => {
                 checkbox.addEventListener("change", function () {
                     let group = this.dataset.group;
@@ -563,8 +844,11 @@
                 const drives = groups[group];
                 const totalCfm = drives.reduce((sum, d) => sum + (parseFloat(d.actualCfm) || 0), 0);
                 const avgPercent = drives.length ? drives.reduce((sum, d) => sum + (parseFloat(d.actualPercent) || 0), 0) / drives.length : 0;
-                g.cfmEl.textContent = totalCfm.toLocaleString('en-US');
-                g.pctEl.textContent = avgPercent.toFixed(1);
+                const running = drives.filter(d => d.status === 'Running' && d.actualSpeed > 0).length;
+                g.cfmEl.textContent = totalCfm.toLocaleString('en-US') + ' CFM';
+                g.pctEl.textContent = avgPercent.toFixed(1) + ' %';
+                g.runEl.textContent = `${running}/${drives.length} ON`;
+                g.runEl.className = 'chip agg-run ' + (running > 0 ? 'chip-ok' : 'chip-bad');
 
                 drives.forEach(drive => {
                     const el = driveEls[drive.ip];
@@ -578,19 +862,20 @@
                     el.pct.textContent = drive.actualPercent;
 
                     // Fan icon: direction + spin
-                    el.spin.className = drive.clockwise === 1 && drive.actualSpeed > 0 ? 'fa fa-fan fa-spin' :
-                        drive.clockwise === 0 && drive.actualSpeed > 0 ? 'fa fa-fan counter-spin' : 'fa fa-fan';
+                    el.spin.classList.toggle('cw', drive.clockwise === 1 && drive.actualSpeed > 0);
+                    el.spin.classList.toggle('ccw', drive.clockwise === 0 && drive.actualSpeed > 0);
 
-                    // Status lamp + label
+                    // Status chip
                     const st = statusInfo(drive);
-                    el.status.classList.remove(...STATUS_CLASSES);
-                    el.status.classList.add(st.cls);
-                    el.stText.textContent = st.text;
+                    el.chip.classList.remove(...STATUS_CLASSES);
+                    el.chip.classList.add(st.cls);
+                    el.chip.textContent = st.text;
+                    el.row.classList.toggle('unhealthy', st.cls === 'st-fault');
 
                     // Stale-data marker
                     const timeDiff = (now - new Date(drive.lastUpdated * 1000)) / 1000;
                     if (timeDiff > 30) {
-                        el.staleNote.textContent = `(Not updated for ${Math.floor(timeDiff)} seconds)`;
+                        el.staleNote.textContent = `no data ${Math.floor(timeDiff)}s`;
                         el.row.classList.add("stale-data");
                     } else {
                         el.staleNote.textContent = '';
@@ -632,16 +917,21 @@
             lastEventsJSON = json;
             const controlEventsDiv = document.getElementById('control-events');
             controlEventsDiv.innerHTML = '';
+            if (!controlEvents.length) {
+                controlEventsDiv.innerHTML = '<div class="events-empty">No control actions yet. Commands sent from this panel appear here.</div>';
+                return;
+            }
             controlEvents.slice().reverse().forEach(event => {
                 const eventDiv = document.createElement('div');
-                eventDiv.className = 'control-event';
+                const allOk = event.drives.every(d => d.success);
+                eventDiv.className = 'control-event ' + (allOk ? 'ev-ok' : 'ev-bad');
                 const timestamp = new Date(event.timestamp);
                 const formattedDate = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')} ${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
                 eventDiv.innerHTML = `
-                    <span class="timestamp">${formattedDate}</span>
-                    <span class="event-box">${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</span>
-                    <div>${event.drives.map(drive => `
-                        <span class="devices-box ${drive.success ? 'ok' : 'fail'}">${drive.ip}${drive.error ? ` - ${drive.error}` : ''}</span>
+                    <div class="event-time">${formattedDate}</div>
+                    <div class="event-action">${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</div>
+                    <div class="pchips">${event.drives.map(drive => `
+                        <span class="pchip ${drive.success ? 'pchip-ok' : 'pchip-bad'}">${drive.ip}${drive.error ? ` - ${drive.error}` : ''}</span>
                     `).join('')}</div>
                 `;
                 controlEventsDiv.appendChild(eventDiv);
@@ -651,11 +941,11 @@
         // === 4. Control Functions ===
         function sendControl(action, speed = null) {
             if (action === 'SetSpeed' && (!speed || speed.trim() === '')) {
-                alert('Please enter a speed value');
+                toast('Please enter a speed value', 'error');
                 return;
             }
             let selectedDrives = Array.from(document.querySelectorAll(".drive-checkbox:checked")).map(cb => cb.dataset.ip);
-            if (selectedDrives.length === 0) return alert("No drives selected.");
+            if (selectedDrives.length === 0) return toast("No drives selected.", 'error');
             let body = { drives: selectedDrives, action: action };
             if (speed) body.speed = parseFloat(speed);
             fetch('/api/control', {
@@ -663,16 +953,18 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             }).then(response => response.text())
+              .then(() => toast(`${action === 'SetSpeed' ? `Set ${body.speed} Hz` : action} sent to ${selectedDrives.length} drive${selectedDrives.length > 1 ? 's' : ''}`, 'ok'));
         }
         function quickGroupControl(group, action) {
             let drives = Array.from(document.querySelectorAll(`.drive-checkbox[data-group='${group}']`)).map(cb => cb.dataset.ip);
-            if (drives.length === 0) return alert("No drives in this group.");
+            if (drives.length === 0) return toast("No drives in this group.", 'error');
             let body = { drives: drives, action: action };
             fetch('/api/control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
-            }).then(response => response.text());
+            }).then(response => response.text())
+              .then(() => toast(`${action} sent to ${groupLabel} ${group}`, 'ok'));
         }
         function selectAllDrives() {
             const selectAllCheckbox = document.getElementById('select-all');
@@ -715,18 +1007,18 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    toast(data.message, 'ok');
                     if (action === 'curtail') {
                         updateCurtailButton(true);
                     } else {
                         updateCurtailButton(false);
                     }
                 } else {
-                    alert('Error: ' + (data.error || 'Unknown error'));
+                    toast('Error: ' + (data.error || 'Unknown error'), 'error');
                 }
             })
             .catch(error => {
-                alert('Failed to ' + action + ': ' + error);
+                toast('Failed to ' + action + ': ' + error, 'error');
             });
         }
 
@@ -763,6 +1055,10 @@
 
         // === 5. Event Listeners and Dark Mode ===
         document.addEventListener("DOMContentLoaded", function() {
+            // Clock
+            tickClock();
+            setInterval(tickClock, 1000);
+
             const hertzInput = document.getElementById('speed-value');
             const percentInput = document.getElementById('percent-value');
             hertzInput.addEventListener('input', function() {
@@ -773,24 +1069,20 @@
                 const percent = parseFloat(this.value) || 0;
                 hertzInput.value = ((percent / 100) * 60).toFixed(1);
             });
-            // Dark mode toggle
+
+            // Theme toggle (dark is the default for a control-room tool)
             const darkModeToggle = document.getElementById('darkModeToggle');
-            function setDarkMode(on) {
-                if (on) {
-                    document.body.classList.add('dark-mode');
-                    darkModeToggle.textContent = '💡 Light Mode';
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    darkModeToggle.textContent = '🌙 Dark Mode';
-                }
-            }
-            let darkPref = localStorage.getItem('darkMode') === 'true';
-            setDarkMode(darkPref);
-            darkModeToggle.onclick = function() {
-                darkPref = !darkPref;
-                localStorage.setItem('darkMode', darkPref);
-                setDarkMode(darkPref);
+            const setDarkMode = (enabled) => {
+                document.body.classList.toggle('dark-mode', enabled);
+                darkModeToggle.innerHTML = enabled ? '&#9788;' : '&#9789;';
+                darkModeToggle.title = enabled ? 'Switch to light theme' : 'Switch to dark theme';
+                localStorage.setItem('darkMode', enabled ? 'true' : 'false');
             };
+            setDarkMode(localStorage.getItem('darkMode') !== 'false');
+            darkModeToggle.addEventListener('click', () => {
+                setDarkMode(!document.body.classList.contains('dark-mode'));
+            });
+
             document.getElementById('apiModalBtn').onclick = function() {
               document.getElementById('apiModal').style.display = 'block';
             };
@@ -808,7 +1100,7 @@
             if (!btn) return;
             const targets = (lastDriveData || []).filter(d => d.status === 'Unavailable' || d.status === 'Disconnected').map(d => d.ip);
             if (targets.length === 0) {
-                btn.textContent = '↻ Reconnect Unavailable VFDs';
+                btn.textContent = 'Reconnect unavailable';
                 return;
             }
             btn.disabled = true;
@@ -839,172 +1131,177 @@
     </script>
 </head>
 <body>
-    <div class="container">
-        <header class="topbar">
-            <div class="brand">
-                <h1>VFD Control Panel</h1>
-                <span class="ws-chip stale" id="wsChip"><span class="lamp"></span><span>STALE</span></span>
-            </div>
-            <div class="topbar-actions">
-                <button id="apiModalBtn" class="btn subtle">🌍 Remote Control API</button>
-                <button id="darkModeToggle" class="btn subtle">🌙 Dark Mode</button>
-            </div>
-        </header>
-
-        <section class="control-panel">
-            <div class="cluster">
-                <span class="cluster-label">Speed</span>
-                <div class="cluster-row">
-                    <span class="speed-field">
-                        <input type="number" id="speed-value" step=".1" placeholder="0.0" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required>
-                        <span class="speed-legend">Hz</span>
-                    </span>
-                    <span class="speed-field">
-                        <input type="number" id="percent-value" step=".1" placeholder="0.0" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required>
-                        <span class="speed-legend">%</span>
-                    </span>
-                    <button class="btn set-speed" title="Sets VFD speed and starts it." onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>
-                </div>
-            </div>
-            <div class="cluster">
-                <span class="cluster-label">Commands</span>
-                <div class="cluster-row">
-                    <button class="btn start" title="Starts the VFD using previously set speed." onclick="sendControl('Start')">Start</button>
-                    <button class="btn stop" title="Stops the VFD." onclick="sendControl('Stop')">Stop</button>
-                    <span id="fanhold-button" style="display: none;">
-                        <button class="btn fanhold" title="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning" onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
-                    </span>
-                </div>
-            </div>
-            <div class="cluster">
-                <span class="cluster-label">Load</span>
-                <div class="cluster-row">
-                    <button class="btn curtail" id="curtail-button" title="Curtail selected groups or all fans." onclick="toggleCurtail()"><span id="curtail-text">Curtail</span></button>
-                </div>
-            </div>
-            <div class="cluster">
-                <span class="cluster-label">Selection</span>
-                <label class="checkline"><input type="checkbox" id="select-all" onclick="selectAllDrives()"> Select all fans</label>
-            </div>
-            <div class="cluster right">
-                <span class="cluster-label">Connectivity</span>
-                <div class="cluster-row">
-                    <button id="reconnectUnavailableBtn" class="btn reconnect" title="Disconnect then reconnect all VFDs currently Unavailable">↻ Reconnect Unavailable VFDs</button>
-                </div>
-            </div>
-        </section>
-
-        <div id="apiModal" class="modal">
-          <div class="modal-card">
-            <button class="modal-close" onclick="document.getElementById('apiModal').style.display='none'">&times;</button>
-            <h2>🌍 Remote Control API</h2>
-            <div style="overflow-x:auto; max-width:100%;">
-              <div style="margin-bottom:18px;">
-                <b>Remotely control the VFD server by sending JSON commands to its HTTP endpoints.</b><br>
-                All endpoints are accessible on <code>http://<span class="api-host"></span></code> (as set in your config).
-              </div>
-              <h3>🖥️ <b>/api/devices</b> (GET)</h3>
-              <div style="margin-bottom:8px;">Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</div>
-              <div class="codeblock"><code>curl http://<span class="api-host"></span>/api/devices</code></div>
-              <div class="codeblock">
-                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"IP": "10.33.30.11",<br>&nbsp;&nbsp;&nbsp;&nbsp;"DriveType": "OptidriveE3",<br>&nbsp;&nbsp;&nbsp;&nbsp;"Group": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanNumber": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanDesc": "1x 1800RPM 29.5kCFM",<br>&nbsp;&nbsp;&nbsp;&nbsp;"RpmHz": 30,<br>&nbsp;&nbsp;&nbsp;&nbsp;"CfmRpm": 16.38888888,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Port": 502,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Unit": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"setSpeed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualSpeed": 44.8,<br>&nbsp;&nbsp;&nbsp;&nbsp;"rpmSpeed": 1344,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualCfm": 22000,<br>&nbsp;&nbsp;&nbsp;&nbsp;"current": 8.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;"status": "Running",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastUpdated": 1718030000<br>&nbsp;&nbsp;&nbsp;&nbsp;// ... other live fields ...<br>&nbsp;&nbsp;}<br>]</code>
-              </div>
-              <div style="margin-bottom:18px;">Returns an array of objects, each containing both static config and live data for every drive.</div>
-              <h3>🔗 <b>/api/control</b> (POST)</h3>
-              <div style="margin-bottom:8px;">Remotely start, stop, set speed, or hold fans.<br>Accepts a JSON payload with the following elements:</div>
-              <div class="codeblock">
-                <code>{<br>&nbsp;&nbsp;"drives": ["10.33.30.11", "10.33.30.12"],<br>&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;"speed": 45.0<br>}</code>
-              </div>
-              <div style="margin-bottom:8px;">Query Elements:</div>
-              <ul>
-                <li><b>drives</b>: Array of VFD IPs to control</li>
-                <li><b>action</b>: Control action (see below)</li>
-                <li><b>speed</b>: Frequency in Hz for SetSpeed action only (Optional)</li>
-              </ul>
-              <div style="margin-bottom:8px;">Actions:</div>
-              <ul>
-                <li>▶️ <b>Start</b>: Start the selected drives</li>
-                <li>⏹️ <b>Stop</b>: Stop the selected drives</li>
-                <li>🛑 <b>Fanhold</b>: Set speed to 0 Hz but keep drive enabled</li>
-                <li>𖣘 <b>Freespin</b>: Alias for Stop (let fan coast)</li>
-                <li>⏲ <b>SetSpeed</b>: Set the speed (Hz) and start the drive</li>
-              </ul>
-              <div style="margin-bottom:8px;">Example <b>curl</b> command:</div>
-              <div class="codeblock">
-                <code>curl -X POST http://<span class="api-host"></span>/api/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
-              </div>
-              <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</div>
-
-              <h3>📜 <b>/api/control-events</b> (GET)</h3>
-              <div style="margin-bottom:8px;">Fetch a list of recent control events (for audit/logging).</div>
-              <div class="codeblock">
-                <code>curl http://<span class="api-host"></span>/api/control-events</code>
-              </div>
-              <div class="codeblock">
-                <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2024-06-10T12:34:56Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;&nbsp;&nbsp;"speed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"drives": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.11", "success": true },<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.12", "success": false, "error": "Tripped" }<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
-              </div>
-
-              <h3>🔌 <b>/api/vfdconnect</b> (POST)</h3>
-              <div style="margin-bottom:8px;">Connect or disconnect a VFD by IP. Used by the UI to reconnect or disconnect a drive. This is merely a toggle, so invoking this does not specify whether to turn it on or off, it just change it's status.</div>
-              <div class="codeblock">
-                <code>{ "ip": "10.33.30.11" }</code>
-              </div>
-              <div class="codeblock">
-                <code>curl -X POST http://<span class="api-host"></span>/api/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
-              </div>
-
-              <h3>📊 <b>/api/status</b> (GET)</h3>
-              <div style="margin-bottom:8px;">Get system status information including loading state, connection status, and data collection metrics.</div>
-              <div class="codeblock">
-                <code>curl http://<span class="api-host"></span>/api/status</code>
-              </div>
-              <div class="codeblock">
-                <code>{<br>&nbsp;&nbsp;"loading": false,<br>&nbsp;&nbsp;"ready": true,<br>&nbsp;&nbsp;"initialConnectionsDone": true,<br>&nbsp;&nbsp;"totalVFDs": 24,<br>&nbsp;&nbsp;"connectedVFDs": 22,<br>&nbsp;&nbsp;"healthyVFDs": 21,<br>&nbsp;&nbsp;"lastUpdateTime": "2025-08-06T12:34:56Z",<br>&nbsp;&nbsp;"dataCollectionAge": "5.2s"<br>}</code>
-              </div>
-              <div style="margin-bottom:8px;">Response Fields:</div>
-              <ul>
-                <li><b>loading</b>: True if system is still establishing initial connections</li>
-                <li><b>ready</b>: True if system has completed initial setup and is operational</li>
-                <li><b>initialConnectionsDone</b>: True after first connection attempt to all VFDs</li>
-                <li><b>totalVFDs</b>: Total number of configured VFDs</li>
-                <li><b>connectedVFDs</b>: Number of successfully connected VFDs</li>
-                <li><b>healthyVFDs</b>: Number of healthy/responsive VFDs</li>
-                <li><b>lastUpdateTime</b>: Timestamp of last data collection cycle</li>
-                <li><b>dataCollectionAge</b>: How long ago data was last collected</li>
-              </ul>
-
-              <h3>🔻 <b>/api/curtail</b> (POST)</h3>
-              <div style="margin-bottom:8px;">Curtail and resume VFD operations. Curtailment saves the current state of all or selected drives, stops them, and allows resuming to their previous state later.</div>
-              <div class="codeblock">
-                <b>Curtail Request:</b><br>
-                <code>{ "action": "curtail", "groups": ["1", "B1-A"] }</code><br>
-                <span class="note">// Empty groups array = curtail all drives</span>
-              </div>
-              <div class="codeblock">
-                <b>Resume Request:</b><br>
-                <code>{ "action": "resume" }</code>
-              </div>
-              <div class="codeblock">
-                <code>curl -X POST http://<span class="api-host"></span>/api/curtail \<br>  -H 'Content-Type: application/json' \<br>  -d '{"action": "curtail", "groups": ["1"]}'</code>
-              </div>
-              <div style="margin-bottom:8px;">How it works:</div>
-              <ul>
-                <li><b>Curtail</b>: Saves current setpoint and status, stops all affected drives, stores state in /etc/vfd/curtailment_state.json</li>
-                <li><b>Resume</b>: Loads saved state, restores each drive to previous speed/state, clears state file</li>
-                <li><b>Groups</b>: If no groups specified, curtails ALL drives</li>
-                <li><b>Persistence</b>: State survives server restarts</li>
-              </ul>
-            </div>
-          </div>
+    <header class="topbar">
+        <div class="brand">
+            <h1><span id="siteName"></span> VFD CONTROL</h1>
+            <span class="brand-sub">Ventilation</span>
+            <span class="brand-line"><span class="clock" id="clock"></span><span class="ws-chip stale" id="wsChip">STALE</span></span>
         </div>
 
-        <div class="drives-box">
-            <div id="drive-container" class="drives-panel"></div>
-            <aside class="control-events-panel">
-                <h2>Control Events</h2>
-                <div id="control-events"></div>
-            </aside>
+        <div class="meter" title="Total airflow across all fans">
+            <div class="meter-main">
+                <span class="meter-label">Site Airflow</span>
+                <span class="meter-value" id="fleetCfm">&mdash;</span>
+            </div>
+            <div class="meter-side">
+                <span class="meter-stat" id="fleetFans">FANS <b>&mdash;</b></span>
+                <span class="meter-stat" id="fleetAvg">AVG <b>&mdash;</b></span>
+            </div>
         </div>
+
+        <div class="actions">
+            <span class="actions-label">Selected fans</span>
+            <span class="speed-field">
+                <input type="number" id="speed-value" step=".1" placeholder="0.0" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required>
+                <span class="speed-unit">Hz</span>
+            </span>
+            <span class="speed-field">
+                <input type="number" id="percent-value" step=".1" placeholder="0.0" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required>
+                <span class="speed-unit">%</span>
+            </span>
+            <button class="btn btn-accent" title="Sets VFD speed and starts it." onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set speed</button>
+            <button class="btn btn-on" title="Starts the VFD using previously set speed." onclick="sendControl('Start')">Start</button>
+            <button class="btn btn-off" title="Stops the VFD." onclick="sendControl('Stop')">Stop</button>
+            <span id="fanhold-button" style="display: none;">
+                <button class="btn btn-hold" title="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning" onclick="sendControl('Fanhold')">Fan hold</button>
+            </span>
+            <button class="btn curtail" id="curtail-button" title="Curtail selected groups or all fans." onclick="toggleCurtail()"><span id="curtail-text">Curtail</span></button>
+            <label class="checklabel"><input type="checkbox" id="select-all" onclick="selectAllDrives()"> Select all</label>
+            <button id="reconnectUnavailableBtn" class="btn btn-ghost" title="Disconnect then reconnect all VFDs currently Unavailable">Reconnect unavailable</button>
+            <button class="btn btn-ghost" id="darkModeToggle" title="Switch theme">&#9789;</button>
+        </div>
+    </header>
+
+    <main class="layout">
+        <section id="drive-container" class="groups"></section>
+        <aside class="events-panel">
+            <h2>ACTIVITY</h2>
+            <div id="control-events"><div class="events-empty">No control actions yet. Commands sent from this panel appear here.</div></div>
+        </aside>
+    </main>
+
+    <button id="apiModalBtn">API</button>
+    <div id="toast-host"></div>
+
+    <!-- API documentation modal -->
+    <div id="apiModal" class="modal">
+      <div class="modal-card">
+        <button class="modal-close" onclick="document.getElementById('apiModal').style.display='none'">&times;</button>
+        <h2>REMOTE CONTROL API</h2>
+        <p>Remotely control the VFD server by sending JSON commands to its HTTP endpoints. All endpoints are accessible on <code>http://<span class="api-host"></span></code> (as set in your config).</p>
+
+        <h3>/api/devices <span class="method">GET</span></h3>
+        <p>Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</p>
+        <div class="codeblock">curl http://<span class="api-host"></span>/api/devices</div>
+        <div class="codeblock">[
+  {
+    "IP": "10.33.30.11",
+    "DriveType": "OptidriveE3",
+    "Group": 1,
+    "FanNumber": 1,
+    "FanDesc": "1x 1800RPM 29.5kCFM",
+    "RpmHz": 30,
+    "CfmRpm": 16.38888888,
+    "Port": 502,
+    "Unit": 1,
+    "setSpeed": 45.0,
+    "actualSpeed": 44.8,
+    "rpmSpeed": 1344,
+    "actualCfm": 22000,
+    "current": 8.2,
+    "status": "Running",
+    "lastUpdated": 1718030000
+  }
+]</div>
+        <p>Returns an array of objects, each containing both static config and live data for every drive.</p>
+
+        <h3>/api/control <span class="method post">POST</span></h3>
+        <p>Remotely start, stop, set speed, or hold fans. Accepts a JSON payload:</p>
+        <div class="codeblock">{
+  "drives": ["10.33.30.11", "10.33.30.12"],
+  "action": "SetSpeed",
+  "speed": 45.0
+}</div>
+        <ul>
+            <li><b>drives</b>: Array of VFD IPs to control</li>
+            <li><b>action</b>: Control action (see below)</li>
+            <li><b>speed</b>: Frequency in Hz for SetSpeed action only (Optional)</li>
+        </ul>
+        <p>Actions:</p>
+        <ul>
+            <li><b>Start</b>: Start the selected drives</li>
+            <li><b>Stop</b>: Stop the selected drives</li>
+            <li><b>Fanhold</b>: Set speed to 0 Hz but keep drive enabled</li>
+            <li><b>Freespin</b>: Alias for Stop (let fan coast)</li>
+            <li><b>SetSpeed</b>: Set the speed (Hz) and start the drive</li>
+        </ul>
+        <div class="codeblock">curl -X POST http://<span class="api-host"></span>/api/control \
+  -H 'Content-Type: application/json' \
+  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</div>
+        <p><b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</p>
+
+        <h3>/api/control-events <span class="method">GET</span></h3>
+        <p>Fetch a list of recent control events (for audit/logging).</p>
+        <div class="codeblock">curl http://<span class="api-host"></span>/api/control-events</div>
+        <div class="codeblock">[
+  {
+    "timestamp": "2024-06-10T12:34:56Z",
+    "action": "SetSpeed",
+    "speed": 45.0,
+    "drives": [
+      { "ip": "10.33.30.11", "success": true },
+      { "ip": "10.33.30.12", "success": false, "error": "Tripped" }
+    ]
+  }
+]</div>
+
+        <h3>/api/vfdconnect <span class="method post">POST</span></h3>
+        <p>Connect or disconnect a VFD by IP. Used by the UI to reconnect or disconnect a drive. This is merely a toggle, so invoking this does not specify whether to turn it on or off, it just change it's status.</p>
+        <div class="codeblock">{ "ip": "10.33.30.11" }</div>
+        <div class="codeblock">curl -X POST http://<span class="api-host"></span>/api/vfdconnect \
+  -H 'Content-Type: application/json' \
+  -d '{"ip": "10.33.30.11"}'</div>
+
+        <h3>/api/status <span class="method">GET</span></h3>
+        <p>Get system status information including loading state, connection status, and data collection metrics.</p>
+        <div class="codeblock">curl http://<span class="api-host"></span>/api/status</div>
+        <div class="codeblock">{
+  "loading": false,
+  "ready": true,
+  "initialConnectionsDone": true,
+  "totalVFDs": 24,
+  "connectedVFDs": 22,
+  "healthyVFDs": 21,
+  "lastUpdateTime": "2025-08-06T12:34:56Z",
+  "dataCollectionAge": "5.2s"
+}</div>
+        <ul>
+            <li><b>loading</b>: True if system is still establishing initial connections</li>
+            <li><b>ready</b>: True if system has completed initial setup and is operational</li>
+            <li><b>initialConnectionsDone</b>: True after first connection attempt to all VFDs</li>
+            <li><b>totalVFDs</b>: Total number of configured VFDs</li>
+            <li><b>connectedVFDs</b>: Number of successfully connected VFDs</li>
+            <li><b>healthyVFDs</b>: Number of healthy/responsive VFDs</li>
+            <li><b>lastUpdateTime</b>: Timestamp of last data collection cycle</li>
+            <li><b>dataCollectionAge</b>: How long ago data was last collected</li>
+        </ul>
+
+        <h3>/api/curtail <span class="method post">POST</span></h3>
+        <p>Curtail and resume VFD operations. Curtailment saves the current state of all or selected drives, stops them, and allows resuming to their previous state later.</p>
+        <div class="codeblock">{ "action": "curtail", "groups": ["1", "B1-A"] }
+// Empty groups array = curtail all drives</div>
+        <div class="codeblock">{ "action": "resume" }</div>
+        <div class="codeblock">curl -X POST http://<span class="api-host"></span>/api/curtail \
+  -H 'Content-Type: application/json' \
+  -d '{"action": "curtail", "groups": ["1"]}'</div>
+        <p>How it works:</p>
+        <ul>
+            <li><b>Curtail</b>: Saves current setpoint and status, stops all affected drives, stores state in /etc/vfd/curtailment_state.json</li>
+            <li><b>Resume</b>: Loads saved state, restores each drive to previous speed/state, clears state file</li>
+            <li><b>Groups</b>: If no groups specified, curtails ALL drives</li>
+            <li><b>Persistence</b>: State survives server restarts</li>
+        </ul>
+      </div>
     </div>
 </body>
 </html>

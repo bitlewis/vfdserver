@@ -535,11 +535,13 @@ server {
 
 ## 🧾 Recent Changes
 
-**2026-07 — UI redesign (v3.8.1)**
-- Instrument-panel look: dot-matrix (Doto) annunciator headers, IBM Plex Mono readouts with aligned columns, LED status lamps; color now signals state only (green running / amber stopped / red fault / grey offline)
+**2026-07 — UI redesign on the shared PDU/VFD theme kit (v3.8.1)**
+- Rebuilt the web UI on the same design system as pduserver so both control panels look like one product: identical design tokens, Inter/IBM Plex Mono/Doto type, group cards with animated collapse, labeled k/v readout cells, status chips, border-left activity feed, toasts, and the fixed API pill
+- Signature "SITE AIRFLOW" LCD meter in the masthead (glowing dot-matrix total CFM with fans-on and average-speed side stats), the VFD counterpart to pduserver's SITE LOAD meter
 - Flicker-free live updates: drive rows update in place instead of rebuilding the DOM every second; the events feed only re-renders on change
-- WebSocket auto-reconnect with a LIVE/STALE indicator in the header (a dropped socket previously froze the page until reload)
-- Theme-aware API modal, tidied control panel with labeled clusters, responsive mobile layout, reduced-motion support
+- WebSocket auto-reconnect with a LIVE/STALE indicator and live clock in the masthead (a dropped socket previously froze the page until reload)
+- Dark theme is now the default (matching pduserver); FontAwesome dependency replaced with an inline SVG fan that still shows spin direction
+- Responsive mobile layout and reduced-motion support
 
 **2026-07 — Concurrency fixes, hardening, and tests (v3.8.1)**
 - Fixed a data race on the disabled-drives map that could crash the whole server (concurrent map read/write panic)
