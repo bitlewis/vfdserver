@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>Modern, real-time web-based control and monitoring for industrial Variable Frequency Drives (VFDs).</b><br>
-  <i>Supports OptidriveP2 and OptidriveE3 drives.</i>
+  <i>Supports Invertek OptidriveP2 and OptidriveE3, WEG CFW500, and Automation Direct GS4-4020 drives.</i>
 </p>
 
 ---
@@ -17,8 +17,13 @@
 ## 🚀 Features
 
 - ⚡ **Persistent VFD Connections**  
-  Each VFD is managed with a persistent TCP connection for fast, reliable control and status updates. 
-  Automatic reconnection and health monitoring.
+  Each VFD is managed by exactly one dedicated connection goroutine with a persistent TCP connection for fast, reliable control and status updates. 
+  Automatic reconnection, health monitoring, and clean socket teardown on connection loss.
+- 🔒 **Race-Free Concurrency**  
+  All shared state (drive data, connections, disabled drives, event log) is protected by mutexes or atomics; 
+  poll cycles are serialized so live data can never be overwritten by a stale snapshot.
+- ✅ **Unit Tests**  
+  Core logic (frequency conversion formulas, drive status decoding, group filtering) is covered by `go test`.
 - 🌐 **WebSocket-Powered UI**  
   Real-time updates and control via a modern, mobile-friendly web interface. 
   No page reloads required; all data is live.
@@ -47,10 +52,12 @@
 
 ```
 📁 vfdserver/
- ├── vfdserver.go         # Main Go server source code
- ├── config.json          # Example configuration file for VFDs
- ├── drive_profiles.json  # Example drive type profiles
- └── index.html           # Web UI served by the Go backend
+ ├── vfdserver.go              # Main Go server source code
+ ├── vfdserver_test.go         # Unit tests (freq-calc, status decoding, group filtering)
+ ├── config.json               # Example configuration file for VFDs
+ ├── drive_profiles.json       # Example drive type profiles
+ ├── index.html                # Web UI served by the Go backend
+ └── vfdserver-supervisord.conf # Example supervisord config
 ```
 
 ## ⚙️ Configuration
@@ -399,6 +406,14 @@ cd vfdserver
 go build -o vfdserver vfdserver.go
 ```
 
+### 🧪 Run the Tests
+
+```bash
+go test ./...
+```
+
+Covers the frequency conversion formulas for every supported drive type, all three status-decoding paths (integer-based, bit-based, GS4-4020 EnabledStatus), and curtailment group filtering.
+
 ### 📂 Place Config Files
 
 > 📂 **Production files location required:**
@@ -515,6 +530,23 @@ server {
 > - 🌐 Check network connectivity to VFDs
 > - ⚙️ Verify Modbus settings in config.json
 > - 🧩 Check drive_profiles.json for correct register mappings
+
+---
+
+## 🧾 Recent Changes
+
+**2026-07 — Concurrency fixes, hardening, and tests (v3.8.1)**
+- Fixed a data race on the disabled-drives map that could crash the whole server (concurrent map read/write panic)
+- Guaranteed exactly one connection-manager goroutine per drive; disable/enable cycles previously leaked duplicate managers fighting over the same drive (a problem for CFW500, which accepts only one TCP connection)
+- Fixed a file-descriptor leak: dead TCP handlers are now closed before reconnecting
+- Connection health flags are now atomic; poll cycles are serialized so stale snapshots can never overwrite fresh data
+- Frequency-conversion expressions are parsed once at startup instead of on every register read (verified bit-identical output)
+- Added a 10s HTTP read-header timeout to drop half-open connections (WebSockets unaffected)
+- Added unit tests (`vfdserver_test.go`) and consolidated ~200 lines of duplicated code into shared helpers — no changes to Modbus behavior, timings, or API responses
+
+**2026-02 — CFW500 speed control fixes (v3.8.1)**
+- CFW500 speed control now uses P0222=12 (Ethernet mode) for SoftPLC speed pass-through via P1012; the server verifies and restores P0222 on every connect
+- Fixed connection health recovery after network interruptions
 
 ---
 
