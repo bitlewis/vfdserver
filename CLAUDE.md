@@ -41,15 +41,19 @@ sudo ./vfdserver
 ### Core Components
 
 **Single-File Architecture:**
-The entire server is in `vfdserver.go` (~1434 lines), organized into logical sections:
-1. Type Definitions (lines 35-126)
-2. Global Variables (lines 128-146)
-3. Utility/Helper Functions (lines 195-293)
-4. Drive Profile & Connection Management (lines 295-500)
-5. VFD Control Functions (lines 700-900)
-6. HTTP Handlers (lines 900-1300)
-7. Prometheus Metrics (lines 1300-1400)
-8. Main function and initialization (lines 1400-1434)
+The entire server is in `vfdserver.go` (~1750 lines), organized into logical sections (marked with `// =====` banners):
+1. Type Definitions
+2. Global Variables
+3. Utility/Helper Functions
+4. Drive Profile & Connection Management
+5. Polling & Data Collection
+6. Modbus Command Functions
+7. Curtailment Functions
+8. HTTP/WebSocket Handlers
+9. Prometheus Metrics
+10. Main function and initialization
+
+Unit tests for the pure logic (freq-calc parsing, status decoding, group filtering) live in `vfdserver_test.go`; run them with `go test ./...`.
 
 ### Configuration System
 
@@ -72,14 +76,14 @@ The entire server is in `vfdserver.go` (~1434 lines), organized into logical sec
 ### Connection Management
 
 **Persistent VFD Connections:**
-- Each VFD has a dedicated goroutine (`manageVFDConnection`) that maintains a persistent TCP/Modbus connection
-- Automatic reconnection with exponential backoff (max 5 minutes between retries)
-- Health monitoring: connections marked healthy/unhealthy based on read success
+- Each VFD has exactly one dedicated manager goroutine (`manageVFDConnection`), started via `ensureDriveManager` which guarantees no duplicates; the manager exits when its drive is disabled and is restarted on re-enable
+- Automatic reconnection: 3 attempts 5s apart, then a 5-minute backoff; the dead TCP handler is closed before reconnecting
+- Health monitoring: `conn.healthy` is an `atomic.Bool`, marked healthy/unhealthy based on read success
 - Connections can be toggled on/off via `/api/vfdconnect` endpoint
 - Disabled drives are persisted to `/etc/vfd/disabled_drives.json` across restarts
 
 **Data Polling:**
-- `pollAllDrives()` continuously polls all connected VFDs every 2 seconds
+- `pollAllDrives()` polls all connected VFDs every 1 second (max 10 concurrently); cycles are serialized by `pollMu` so handler-triggered polls can't interleave with the ticker
 - Results stored in global `vfdData` array (protected by `vfdDataMutex`)
 - WebSocket clients receive live updates from this cached data
 - System status tracks loading state, connection counts, and data freshness
@@ -161,15 +165,16 @@ All metrics include labels: `ip`, `fan_number`, `group`, `site`
 
 **Modifying control logic:**
 - Control functions: `fanStart()`, `fanStop()`, `setFanSpeed()`, `fanHold()`, `fanUnTrip()`
-- All use `findDriveType()` to get drive profile, then read/write appropriate registers
+- All resolve their connection and drive profile via `getConnAndProfile(ip)`, then write the appropriate registers
 - Always use context with timeout for Modbus operations
 - Lock connections with `conn.mu.Lock()` during operations
+- Record events via `recordControlEvent()` (handles retention trimming and persistence)
 
 **Working with VFD connections:**
 - Use `vfdConnectionsMu` (RWMutex) to protect `vfdConnections` map
 - Each connection has its own mutex (`conn.mu`) for Modbus operations
-- Connection health tracked in `conn.healthy` field
-- Check `disabledDrives` map before attempting operations
+- Connection health tracked in `conn.healthy` (`atomic.Bool`)
+- Check `isDriveDisabled(ip)` before attempting operations
 
 ## Important Considerations
 
@@ -185,7 +190,11 @@ All metrics include labels: `ip`, `fan_number`, `group`, `site`
 - `vfdConnectionsMu` protects `vfdConnections` map
 - `eventsMutex` protects `controlEvents` array
 - `statusMutex` protects `systemStatus` struct
-- Each VFDConnection has its own mutex for Modbus operations
+- `disabledDrivesMu` protects the `disabledDrives` map — always use the `isDriveDisabled`/`setDriveDisabled` helpers
+- `driveManagersMu` protects the `driveManagers` registry — always start managers via `ensureDriveManager`
+- `pollMu` serializes `pollAllDrives` cycles
+- Each VFDConnection has its own mutex for Modbus operations; its `healthy` flag is an `atomic.Bool`
+- `ipToDrive`, `freqCalcCache`, `appConfig`, and `driveTypeProfiles` are built once at startup and read-only afterwards (no locking needed)
 
 **Error handling:**
 - Connection errors trigger reconnection logic in `manageVFDConnection()`

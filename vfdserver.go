@@ -991,23 +991,28 @@ func curtailDrives(groups []string) error {
 
     // Get current state from vfdData
     vfdDataMutex.RLock()
-    for _, drive := range drives {
-        for _, entry := range vfdData {
-            if entry["ip"] == drive.IP {
-                curtailedDrive := CurtailedDriveState{
-                    IP:    drive.IP,
-                    Group: drive.Group,
-                }
-                if setSpeed, ok := entry["setSpeed"].(float64); ok {
-                    curtailedDrive.SetSpeed = setSpeed
-                }
-                if status, ok := entry["status"].(string); ok {
-                    curtailedDrive.Status = status
-                }
-                state.Drives = append(state.Drives, curtailedDrive)
-                break
-            }
+    liveByIP := make(map[string]map[string]interface{}, len(vfdData))
+    for _, entry := range vfdData {
+        if ip, ok := entry["ip"].(string); ok {
+            liveByIP[ip] = entry
         }
+    }
+    for _, drive := range drives {
+        entry, ok := liveByIP[drive.IP]
+        if !ok {
+            continue
+        }
+        curtailedDrive := CurtailedDriveState{
+            IP:    drive.IP,
+            Group: drive.Group,
+        }
+        if setSpeed, ok := entry["setSpeed"].(float64); ok {
+            curtailedDrive.SetSpeed = setSpeed
+        }
+        if status, ok := entry["status"].(string); ok {
+            curtailedDrive.Status = status
+        }
+        state.Drives = append(state.Drives, curtailedDrive)
     }
     vfdDataMutex.RUnlock()
 
@@ -1734,5 +1739,9 @@ func main() {
         http.Handle("/metrics", promhttp.Handler())
 
         log.Printf("VFD Control Server v%s by Louis Valois - for %s Site\nWeb server started on http://%s:%s", Version, appConfig.SiteName, appConfig.BindIP, appConfig.BindPort)
-        log.Fatal(http.ListenAndServe(appConfig.BindIP + ":" + appConfig.BindPort, nil))
+        server := &http.Server{
+            Addr:              appConfig.BindIP + ":" + appConfig.BindPort,
+            ReadHeaderTimeout: 10 * time.Second, // drop half-open connections; WebSockets unaffected (hijacked)
+        }
+        log.Fatal(server.ListenAndServe())
 }
