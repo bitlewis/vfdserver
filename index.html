@@ -6,93 +6,288 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <title>VFD Control</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f7fc; color: #222; min-height: 100vh; }
-        .container { position: relative; width: 100%; }
-        .header { width: 100%; text-align: center; }
-        h1 { text-align: center; color: #333; font-size: 42px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
-        .group { margin-bottom: 10px; }
-        .group-title-container { display: flex; align-items: center; }
-        .group-title { width: 80%; cursor: pointer; font-size: 18px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; background: #4CAF50; color: white; border-radius: 5px; padding: 10px; border: 1px solid #4CAF50; }
-        .drive-list { display: none; padding-left: 15px; }
-        .drive-item { padding: 5px; background: #fff; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; }
-        input[type="checkbox"] { margin-right: 10px; }
-        .status-box { padding: 4px; border-radius: 4px; display: inline-block; cursor: not-allowed; border: 1px solid #5c5c5c; }
-        .grey { background-color: #d3d3d3; color: #555; border: none; }
-        .blue { background-color: #007bff; color: white; border: none;}
-        .green { background-color: #4CAF50; color: white; border: none;}
-        .orange { background-color: #ffa500; color: white; border: none;}
-        .inform { background-color: #eaeaea; color: rgb(0, 0, 0); }
-        .totalcfm { font-family: Arial, sans-serif; font-size: 14px;background-color: #007bff; color: white; }
-        .stale-data { background-color: #d3d3d3; }
-        .control-panel { background-color: #fff; margin: 40px auto 0 auto; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); position: sticky; top: 0; width: 96%; max-width: 3000px; z-index: 10; }
-        .control-button-title { font-size: 20px; font-family: "Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; margin-bottom: 10px; color: #222; }
-        .control-panel button { font-size: 16px; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-        .control-panel button.fanhold { background-color: #f44336; color: white; }
-        .control-panel button.set-speed { background-color: #4CAF50; color: white; }
-        .control-panel button.start { background-color: #4CAF50; color: white; }
-        .control-panel button.stop { background-color: #ffa500; color: white; }
-        .control-panel button.curtail { background-color: #ff6b6b; color: white; font-weight: bold; }
-        .control-panel button.curtail.active { background-color: #51cf66; }
-        .control-panel input[type="number"] { padding: 10px; border: 1px solid #999999; border-radius: 5px; width: 100px; }
-        .quickbutton { font-size: 14px; padding: 5px 5px; border: none; border-radius: 5px; cursor: pointer; }
-        .drives-box { padding-top: 5px; width: 100%; margin: 5px auto; width: 97%; display: flex; gap: 10px; }
-        .drives-panel { width: 83%; padding-bottom: 20px; }
-        .control-events-panel { width: 15%; background-color: #fff; padding: 20px; overflow-y: auto; border-radius: 5px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); min-width: 200px; }
-        @media (max-width: 768px) { .control-events-panel { position: static; width: 100%; height: auto; border-left: none; border-top: 1px solid #ddd; } }
-        .control-events-panel h2 { margin-top: 0; font-size: 25px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 700; }
-        .control-event { padding: 10px; border-bottom: 1px solid #ddd; }
+        /* ============ Tokens ============ */
+        :root {
+            --bg: #edf0f4;
+            --surface: #ffffff;
+            --surface2: #f3f5f8;
+            --border: #d9dfe7;
+            --ink: #1b2330;
+            --muted: #5e6b7d;
+            --run: #1e9e62;
+            --amber: #d07b00;
+            --fault: #d43d3d;
+            --off: #76808f;
+            --info: #2f6fd0;
+            --accent: #0d7d90;
+            --lamp-glow: rgba(30, 158, 98, 0.55);
+            --shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+        }
+        body.dark-mode {
+            --bg: #12151a;
+            --surface: #1a1f26;
+            --surface2: #222933;
+            --border: #2d3642;
+            --ink: #e7ecf2;
+            --muted: #909dad;
+            --run: #31d383;
+            --amber: #f0a63a;
+            --fault: #f0564f;
+            --off: #79879a;
+            --info: #5aa2f0;
+            --accent: #3fc1d3;
+            --lamp-glow: rgba(49, 211, 131, 0.55);
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        * { box-sizing: border-box; }
+        html { scrollbar-color: var(--off) transparent; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "IBM Plex Sans", Arial, sans-serif;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--ink);
+            transition: background 0.2s, color 0.2s;
+        }
+        button { font-family: inherit; }
+        code, .mono { font-family: "IBM Plex Mono", monospace; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        /* ============ Top bar ============ */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            padding: 12px 22px 8px 22px; flex-wrap: wrap;
+        }
+        .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        h1 {
+            margin: 0; font-family: "Doto", monospace; font-optical-sizing: auto;
+            font-weight: 900; font-size: 27px; letter-spacing: 0.04em; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .ws-chip {
+            display: inline-flex; align-items: center; gap: 7px;
+            font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em;
+            padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
+        }
+        .ws-chip .lamp { width: 8px; height: 8px; }
+        .ws-chip.live { color: var(--run); border-color: var(--run); }
+        .ws-chip.stale { color: var(--amber); border-color: var(--amber); }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+        /* ============ Buttons ============ */
+        .btn {
+            border: none; border-radius: 7px; padding: 9px 16px; font-size: 14px; font-weight: 600;
+            cursor: pointer; color: #fff; transition: filter 0.12s, transform 0.05s, opacity 0.12s;
+        }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:active { transform: translateY(1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+        .btn.set-speed, .btn.reconnect { background: var(--accent); }
+        .btn.start { background: var(--run); }
+        .btn.stop { background: var(--amber); }
+        .btn.fanhold { background: var(--fault); }
+        .btn.curtail { background: #ff6b6b; }
+        .btn.curtail.active { background: #51cf66; }
+        .btn.subtle {
+            background: var(--surface2); color: var(--ink); border: 1px solid var(--border); font-weight: 500;
+        }
+        .quickbutton {
+            font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer;
+            background: transparent; transition: background 0.12s, color 0.12s;
+        }
+        .quickbutton.green { color: var(--run); border: 1px solid var(--run); }
+        .quickbutton.green:hover { background: var(--run); color: #fff; }
+        .quickbutton.orange { color: var(--amber); border: 1px solid var(--amber); }
+        .quickbutton.orange:hover { background: var(--amber); color: #fff; }
+
+        /* ============ Control panel ============ */
+        .control-panel {
+            position: sticky; top: 0; z-index: 10;
+            display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap;
+            margin: 0 14px; padding: 12px 18px 14px 18px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        .cluster { display: flex; flex-direction: column; gap: 7px; }
+        .cluster-label {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+        }
+        .cluster-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .speed-field { display: flex; align-items: center; }
+        .speed-field input[type="number"] {
+            width: 88px; padding: 8px 10px; font-family: "IBM Plex Mono", monospace; font-size: 14px;
+            text-align: right; color: var(--ink); background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 7px 0 0 7px; border-right: none;
+        }
+        .speed-field input[type="number"]:focus { outline: none; border-color: var(--accent); }
+        .speed-legend {
+            font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+            padding: 9px 8px; background: var(--surface2);
+            border: 1px solid var(--border); border-left: none; border-radius: 0 7px 7px 0;
+        }
+        .checkline { display: flex; align-items: center; gap: 7px; padding: 8px 0; cursor: pointer; user-select: none; }
+        input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+        .cluster.right { margin-left: auto; }
+
+        /* ============ Drives + events layout ============ */
+        .drives-box { display: flex; gap: 14px; padding: 14px; align-items: flex-start; }
+        .drives-panel { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+        .control-events-panel {
+            flex: 0 0 250px; max-height: calc(100vh - 40px); overflow-y: auto;
+            position: sticky; top: 84px;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+            padding: 14px 16px; box-shadow: var(--shadow);
+        }
+        .control-events-panel h2 {
+            margin: 0 0 6px 0; font-family: "Doto", monospace; font-weight: 900; font-size: 18px; letter-spacing: 0.04em;
+        }
+        .control-event { padding: 9px 0; border-bottom: 1px dashed var(--border); }
         .control-event:last-child { border-bottom: none; }
-        .event-box { padding: 4px; border-radius: 4px; font-size: 12px; display: inline-block; cursor: not-allowed; }
-        .devices-box { padding: 4px; border-radius: 4px; font-size: 10px; display: inline-block; cursor: not-allowed; }
-        .timestamp { font-size: 14px; display:inline-block; border-bottom:2px solid black; margin-bottom: 2px; }
-        .fan-buttons { float: left; }
-        .speed-legend { font-size: 14px; font-family:"Doto", serif; font-optical-sizing: auto; font-style: normal; font-weight: 500; }
-        .drive-item { display: flex; align-items: center; justify-content: space-between; }
-        .dark-mode body, .dark-mode { background-color: #181a1b !important; color: #eee !important; }
-        .dark-mode .header { background-color: #181a1b !important; }
-        .dark-mode h1 { color: #fff !important; }
-        .dark-mode .group-title { background: #2d333b !important; color: #fff !important; border: 1px solid #444 !important; }
-        .dark-mode .control-panel { background-color: #23272a !important; color: #eee !important; }
-        .dark-mode .control-button-title { color: #eee !important; }
-        .dark-mode .drive-item { background: #23272a !important; color: #eee !important; }
-        .dark-mode .control-events-panel { background-color: #23272a !important; color: #eee !important; }
-        .dark-mode .status-box.blue, .dark-mode .status-box.inform, .dark-mode .status-box.grey, .dark-mode .status-box.totalcfm { background-color: #3b4252 !important; color: #fff !important; }
-        .dark-mode .status-box { color: #fff !important; border: 1px solid #444 !important; }
-        .dark-mode .green { background-color: #4CAF50; color: white; }
-        .dark-mode .orange { background-color: #ffa500; color: white; }
-        .dark-mode input, .dark-mode select { background: #23272a !important; color: #eee !important; border-color: #444 !important; }
-        .dark-mode .select-all, .dark-mode .drive-checkbox { accent-color: #388e3c; }
-        .dark-mode .fanhold, .dark-mode .restart, .dark-mode .stop, .dark-mode .set-speed { color: #fff !important; }
-        .dark-mode .fanhold { background-color: #b71c1c !important; }
-        .dark-mode .restart { background-color: #388e3c !important; }
-        .dark-mode .stop { background-color: #ffa500 !important; }
-        .dark-mode .set-speed { background-color: #388e3c !important; }
-        .dark-mode .timestamp { color: #fff !important; border-bottom:2px solid #888; }
-        .dark-mode .group { background: none !important; }
-        .dark-mode .drives-panel { background: none !important; }
-        .dark-mode .drives-box { background: none !important; }
-        .dark-mode .stale-data { background-color: #333 !important; }
-        .dark-mode .control-event { border-bottom: 1px solid #444 !important; }
-        .dark-mode .control-events-panel h2 { color: #fff !important; }
-        .dark-mode .group-title { border: 1px solid #444 !important; }
-        .dark-mode .status-box.red { background-color: #b71c1c !important; }
-        .dark-mode .status-box.green { background-color: #388e3c !important; }
-        .dark-mode .status-box.blue { background-color: #1976d2 !important; }
-        .dark-mode .status-box.grey { background-color: #444 !important; }
-        .dark-mode .status-box.totalcfm { background-color: #1976d2 !important; }
-        .dark-mode .status-box.inform { background-color: #444 !important; }
-        .dark-mode .status-box { border: 1px solid #444 !important; }
-        .dark-mode .select-all { accent-color: #388e3c; }
-        .dark-mode .drive-checkbox { accent-color: #388e3c; }
-        #apiModal .modal-content, #apiModal > div { color: #111 !important; }
-        #apiModal, #apiModal * { color: #111 !important; }
-        .dark-mode #apiModal, .dark-mode #apiModal * { color: #111 !important; }
+        .timestamp {
+            display: block; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); margin-bottom: 4px;
+        }
+        .event-box {
+            display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+            background: var(--info); color: #fff; margin-bottom: 4px;
+        }
+        .devices-box {
+            display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+            padding: 2px 6px; border-radius: 5px; margin: 1px 2px 1px 0; color: #fff;
+        }
+        .devices-box.ok { background: var(--run); }
+        .devices-box.fail { background: var(--fault); }
+
+        /* ============ Group strip ============ */
+        .group { display: flex; flex-direction: column; gap: 6px; }
+        .group-head {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+            padding: 8px 14px; box-shadow: var(--shadow);
+        }
+        .group-title {
+            display: flex; align-items: center; gap: 10px; flex: 1 1 220px; min-width: 180px;
+            cursor: pointer; user-select: none;
+        }
+        .group-caret {
+            font-size: 12px; color: var(--muted); transition: transform 0.18s; display: inline-block;
+        }
+        .group.open .group-caret { transform: rotate(90deg); }
+        .group-name {
+            font-family: "Doto", monospace; font-weight: 900; font-size: 18px; letter-spacing: 0.05em;
+        }
+        .group-agg {
+            display: flex; align-items: baseline; gap: 14px;
+            font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--muted);
+        }
+        .group-agg b { color: var(--ink); font-weight: 600; }
+        .group-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+        .select-all-label {
+            display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
+            cursor: pointer; user-select: none; white-space: nowrap;
+        }
+
+        /* ============ Drive rows ============ */
+        .drive-list { display: none; flex-direction: column; gap: 5px; margin-left: 16px; padding-left: 12px; border-left: 2px solid var(--border); }
+        .drive-item {
+            display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap;
+            background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+            padding: 7px 12px; transition: border-color 0.15s;
+        }
+        .drive-item:hover { border-color: var(--off); }
+        .drive-item.stale-data { border-left: 3px solid var(--amber); opacity: 0.75; }
+        .drive-id { flex: 1 1 250px; min-width: 230px; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+        .drive-fan { font-family: "Doto", monospace; font-weight: 900; font-size: 15px; white-space: nowrap; }
+        .drive-desc { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .drive-ip { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+        .cell {
+            font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
+            font-size: 13px; text-align: right; padding: 4px 8px;
+            background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; white-space: nowrap;
+        }
+        .cell small { font-size: 9.5px; color: var(--muted); margin-left: 4px; letter-spacing: 0.04em; }
+        .cell.setpoint { border-style: dashed; color: var(--muted); }
+        .cell.w-hz  { flex: 0 0 96px; }
+        .cell.w-rpm { flex: 0 0 96px; }
+        .cell.w-cfm { flex: 0 0 112px; }
+        .cell.w-amp { flex: 0 0 76px; }
+        .cell.w-pct { flex: 0 0 78px; }
+        .drive-spin { flex: 0 0 20px; text-align: center; color: var(--muted); }
         .counter-spin { animation: fa-spin-reverse 2s infinite linear; }
-        @keyframes fa-spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); }}
+        @keyframes fa-spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+
+        /* status lamp */
+        .lamp {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: currentColor; box-shadow: 0 0 7px currentColor; flex: none;
+        }
+        .drive-status {
+            flex: 1 0 170px; display: flex; align-items: center; gap: 8px;
+            font-size: 12.5px; font-weight: 600; white-space: nowrap;
+        }
+        .drive-status.st-run   { color: var(--run); }
+        .drive-status.st-amber { color: var(--amber); }
+        .drive-status.st-fault { color: var(--fault); }
+        .drive-status.st-off   { color: var(--off); }
+        .drive-status.st-info  { color: var(--info); }
+        .drive-status .stale-note { font-weight: 400; color: var(--muted); }
+        .drive-status.st-run .lamp { animation: lampPulse 2.4s ease-in-out infinite; }
+        @keyframes lampPulse {
+            0%, 100% { box-shadow: 0 0 4px currentColor; }
+            50%      { box-shadow: 0 0 11px currentColor; }
+        }
+
+        .conn-btn {
+            flex: none; margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 4px 10px;
+            border-radius: 6px; border: 1px solid var(--border); cursor: pointer;
+            background: transparent; transition: background 0.12s, color 0.12s;
+        }
+        .conn-btn.connect { color: var(--run); border-color: var(--run); }
+        .conn-btn.connect:hover { background: var(--run); color: #fff; }
+        .conn-btn.disconnect { color: var(--muted); }
+        .conn-btn.disconnect:hover { background: var(--fault); border-color: var(--fault); color: #fff; }
+        .conn-btn:disabled { opacity: 0.45; cursor: wait; }
+
+        /* ============ API modal ============ */
+        #apiModal {
+            display: none; position: fixed; z-index: 1000; inset: 0;
+            overflow: auto; background: rgba(10, 14, 18, 0.6); backdrop-filter: blur(2px);
+        }
+        .modal-card {
+            background: var(--surface); color: var(--ink); margin: 4% auto; padding: 28px 26px 24px 26px;
+            border: 1px solid var(--border); border-radius: 12px; max-width: 640px; position: relative;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35); font-size: 15px; line-height: 1.5;
+        }
+        .modal-card h2 { margin-top: 0; font-family: "Doto", monospace; font-weight: 900; letter-spacing: 0.04em; }
+        .modal-card h3 { margin: 20px 0 6px 0; font-size: 16px; }
+        .modal-close {
+            position: absolute; top: 10px; right: 14px; background: none; border: none;
+            font-size: 28px; color: var(--muted); cursor: pointer; line-height: 1;
+        }
+        .modal-close:hover { color: var(--ink); }
+        .codeblock {
+            background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+            padding: 10px 12px; font-size: 12.5px; margin-bottom: 8px; overflow-x: auto;
+        }
+        .modal-card ul { font-size: 14px; margin: 6px 0 12px 0; }
+        .modal-card .note { font-size: 11px; color: var(--muted); }
+
+        /* ============ Responsive & motion ============ */
+        @media (max-width: 900px) {
+            .drives-box { flex-direction: column; }
+            .control-events-panel { position: static; flex: none; width: 100%; max-height: 320px; }
+            .drive-status { flex-basis: 100%; }
+            .conn-btn { margin-left: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .fa-spin, .counter-spin { animation: none; }
+            .drive-status.st-run .lamp { animation: none; }
+            .group-caret, .drive-item, .btn { transition: none; }
+        }
     </style>
     <script>
         // === 1. Config and Global Variables ===
@@ -107,11 +302,25 @@
         }
         let controlEvents = [];
         let lastDriveData = [];
+        let lastEventsJSON = '';
+        let lastWsMessage = 0;
+
+        // Persistent DOM references so live values update in place (no flicker)
+        let groupEls = {};   // group -> { root, list, caret, cfmEl, pctEl, selectAll }
+        let driveEls = {};   // ip -> { row, checkbox, setHz, outHz, rpm, cfm, amps, pct, spin, status, connBtn }
+        let structureKey = '';
 
         // === 2. App Config and WebSocket Setup ===
+        function whenReady(fn) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fn);
+            } else {
+                fn();
+            }
+        }
         fetch('/api/app-config')
         .then(r => r.json())
-        .then(cfg => {
+        .then(cfg => whenReady(() => {
             if (cfg.siteName) siteName = cfg.siteName;
             if (cfg.groupLabel) groupLabel = cfg.groupLabel;
             if (cfg.noFanHold) noFanHold = cfg.noFanHold;
@@ -139,181 +348,195 @@
                 el.textContent = apiHost;
             });
 
-            // Set Websocket Logic
+            // Set Websocket Logic (auto-reconnects if the connection drops)
             const wsProto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-            let wsHost = ip + (port == 80 ? '' : ':' + port);
-            const ws = new WebSocket(wsProto + wsHost + '/ws');
+            const wsHost = ip + (port == 80 ? '' : ':' + port);
+            connectWebSocket(wsProto + wsHost + '/ws');
+        }));
+
+        function connectWebSocket(url) {
+            const ws = new WebSocket(url);
             ws.onmessage = function (event) {
+                lastWsMessage = Date.now();
                 const data = JSON.parse(event.data);
                 updateUI(data);
             };
             ws.onerror = function (e) { console.error('WebSocket error:', e); };
-            ws.onclose = function () { console.warn('WebSocket closed'); };
-        });
+            ws.onclose = function () {
+                console.warn('WebSocket closed, reconnecting in 3s');
+                setLiveIndicator(false);
+                setTimeout(() => connectWebSocket(url), 3000);
+            };
+        }
+
+        function setLiveIndicator(live) {
+            const chip = document.getElementById('wsChip');
+            if (!chip) return;
+            chip.classList.toggle('live', live);
+            chip.classList.toggle('stale', !live);
+            chip.lastChild.textContent = live ? 'LIVE' : 'STALE';
+        }
+        setInterval(() => setLiveIndicator(Date.now() - lastWsMessage < 4000), 2000);
 
         // === 3. UI Update Functions ===
-        function updateUI(data) {
-            lastDriveData = Array.isArray(data) ? data : [];
-            const container = document.getElementById('drive-container');
-            // Update reconnect button state based on Unavailable VFDs
-            const btn = document.getElementById('reconnectUnavailableBtn');
-            if (btn) {
-                const reconnectableCount = (lastDriveData || []).filter(d => d.status === 'Unavailable' || d.status === 'Disconnected').length;
-                if (reconnectableCount === 0) {
-                    btn.disabled = true;
-                    btn.style.background = '#a0a4ab';
-                    btn.style.opacity = '0.7';
-                    btn.style.cursor = 'not-allowed';
-                    btn.title = 'No Unavailable/Disconnected VFDs to reconnect';
-                } else {
-                    btn.disabled = false;
-                    btn.style.background = '#0d6efd';
-                    btn.style.opacity = '1';
-                    btn.style.cursor = 'pointer';
-                    btn.title = 'Disconnect then reconnect all Unavailable/Disconnected VFDs';
-                }
-            }
-            const currentCheckboxStates = {};
-            document.querySelectorAll(".drive-checkbox").forEach(cb => {
-                currentCheckboxStates[cb.dataset.ip] = cb.checked;
-            });
-            let groups = {};
+        const STATUS_CLASSES = ['st-run', 'st-amber', 'st-fault', 'st-off', 'st-info'];
+
+        function statusInfo(drive) {
+            const text = drive.status === 'Unknown' ? 'Attempting Poll' :
+                drive.status === 'Waiting' ? 'Initialization' :
+                drive.status === 'Running' && drive.actualSpeed === 0 ? 'Fan Hold' :
+                drive.status === 'Stopped' ? 'Freespin' :
+                drive.status === 'NotReady' ? 'Not Ready / Inhibited' :
+                drive.status === 'Tripped' ? 'Tripped' :
+                drive.status === 'Unavailable' ? 'Unavailable' :
+                drive.status === 'Disabled' ? 'Disconnected' :
+                drive.status === 'Running' ? 'Running' : '';
+            const cls = drive.status === 'Stopped' ? 'st-amber' :
+                drive.status === 'Running' && drive.actualSpeed > 0 ? 'st-run' :
+                drive.status === 'NotReady' ? 'st-fault' :
+                drive.status === 'Tripped' ? 'st-fault' :
+                drive.status === 'Unavailable' ? 'st-fault' :
+                drive.status === 'Disabled' ? 'st-off' :
+                drive.status === 'Running' && drive.actualSpeed === 0 ? 'st-fault' :
+                'st-info';
+            return { text, cls };
+        }
+
+        function groupDrives(data) {
+            const groups = {};
             data.forEach(drive => {
                 if (!groups[drive.group]) groups[drive.group] = [];
                 groups[drive.group].push(drive);
             });
+            return groups;
+        }
+
+        function updateUI(data) {
+            lastDriveData = Array.isArray(data) ? data : [];
+            // Update reconnect button state based on Unavailable VFDs
+            const btn = document.getElementById('reconnectUnavailableBtn');
+            if (btn && !btn.dataset.busy) {
+                const reconnectableCount = lastDriveData.filter(d => d.status === 'Unavailable' || d.status === 'Disconnected').length;
+                btn.disabled = reconnectableCount === 0;
+                btn.title = reconnectableCount === 0
+                    ? 'No Unavailable/Disconnected VFDs to reconnect'
+                    : 'Disconnect then reconnect all Unavailable/Disconnected VFDs';
+            }
+
+            const groups = groupDrives(lastDriveData);
+            const key = JSON.stringify(Object.keys(groups).map(g => [g, groups[g].map(d => d.ip)]));
+            if (key !== structureKey) {
+                buildStructure(groups);
+                structureKey = key;
+            }
+            patchValues(groups);
+        }
+
+        // Full rebuild: only when the set of groups/drives changes (first load, config change)
+        function buildStructure(groups) {
+            const container = document.getElementById('drive-container');
+            const currentCheckboxStates = {};
+            document.querySelectorAll(".drive-checkbox").forEach(cb => {
+                currentCheckboxStates[cb.dataset.ip] = cb.checked;
+            });
             container.innerHTML = '';
+            groupEls = {};
+            driveEls = {};
+
             for (let group in groups) {
-                let groupDiv = document.createElement("div");
-                groupDiv.className = "group";
-                let groupTitleContainer = document.createElement("div");
-                groupTitleContainer.style.display = "flex";
-                groupTitleContainer.style.alignItems = "center";
-                let groupTitle = document.createElement("div");
-                groupTitle.className = "group-title";
-                groupTitle.style.width = "90%";
-                let totalCfm = groups[group].reduce((sum, drive) => sum + (parseFloat(drive.actualCfm) || 0), 0);
-                let avgPercent = 0;
-                if (groups[group].length > 0) {
-                    avgPercent = groups[group].reduce((sum, drive) => sum + (parseFloat(drive.actualPercent) || 0), 0) / groups[group].length;
-                }
-                groupTitle.innerHTML = `${groupLabel} ${group} &nbsp;>>&nbsp; Fan power <span class="status-box blue totalcfm">${totalCfm} CFM</span> <span class="status-box blue totalcfm">${avgPercent.toFixed(1)} %</span>`;
-                groupTitle.addEventListener("click", function () {
+                const groupDiv = document.createElement("div");
+                groupDiv.className = "group" + (expandedGroups[group] ? " open" : "");
+
+                const head = document.createElement("div");
+                head.className = "group-head";
+
+                const title = document.createElement("div");
+                title.className = "group-title";
+                title.innerHTML = `<span class="group-caret">&#9654;</span><span class="group-name">${groupLabel} ${group}</span>
+                    <span class="group-agg">total <b class="agg-cfm">0</b> CFM &middot; avg <b class="agg-pct">0.0</b> %</span>`;
+                title.addEventListener("click", function () {
                     const list = groupDiv.querySelector(".drive-list");
-                    list.style.display = (list.style.display === "block") ? "none" : "block";
-                    expandedGroups[group] = list.style.display === "block";
+                    const opening = list.style.display !== "flex";
+                    list.style.display = opening ? "flex" : "none";
+                    groupDiv.classList.toggle("open", opening);
+                    expandedGroups[group] = opening;
                     localStorage.setItem("expandedGroups", JSON.stringify(expandedGroups));
                 });
-                let quickButtons = document.createElement("div");
-                quickButtons.style.display = "flex";
-                quickButtons.style.alignItems = "center";
-                quickButtons.innerHTML = `
-                    <button class="quickbutton green" style="margin-left:8px;" onclick="quickGroupControl('${group}', 'Start')">Start</button>
-                    <button class="quickbutton orange" style="margin-left:4px;" onclick="quickGroupControl('${group}', 'Stop')">Stop</button>
+
+                const tools = document.createElement("div");
+                tools.className = "group-tools";
+                const selectAllChecked = groups[group].every(drive => currentCheckboxStates[drive.ip] === true);
+                tools.innerHTML = `
+                    <button class="quickbutton green" onclick="quickGroupControl('${group}', 'Start')">Start</button>
+                    <button class="quickbutton orange" onclick="quickGroupControl('${group}', 'Stop')">Stop</button>
+                    <label class="select-all-label"><input type="checkbox" class="select-all" data-group="${group}" ${selectAllChecked ? 'checked' : ''}> Select all</label>
                 `;
-                let selectAllDiv = document.createElement("div");
-                selectAllDiv.style.marginLeft = "10px";
-                let selectAllChecked = groups[group].every(drive => currentCheckboxStates[drive.ip] === true);
-                selectAllDiv.innerHTML = `<input type="checkbox" class="select-all" data-group="${group}" ${selectAllChecked ? 'checked' : ''}> Select All`;
-                groupTitleContainer.appendChild(groupTitle);
-                groupTitleContainer.appendChild(quickButtons);
-                groupTitleContainer.appendChild(selectAllDiv);
-                let driveList = document.createElement("div");
+
+                head.appendChild(title);
+                head.appendChild(tools);
+
+                const driveList = document.createElement("div");
                 driveList.className = "drive-list";
-                driveList.style.display = expandedGroups[group] ? "block" : "none";
+                driveList.style.display = expandedGroups[group] ? "flex" : "none";
+
                 groups[group].forEach(drive => {
-                    let driveItem = document.createElement("div");
-                    driveItem.className = "drive-item";
-
-                    // Use the previously stored checkbox state
-                    let checked = currentCheckboxStates[drive.ip] || false;
-
-                    let lastUpdated = new Date(drive.lastUpdated * 1000);
-                    let currentTime = new Date();
-                    let timeDiff = (currentTime - lastUpdated) / 1000;
-
-                    let countdown = '';
-                    if (timeDiff > 30) {
-                        countdown = ` (Not updated for ${Math.floor(timeDiff)} seconds)`;
-                        driveItem.classList.add("stale-data");
-                    } else {
-                        countdown = ``;
-                        driveItem.classList.remove("stale-data");
-                    }
-
-                    if (drive.status === 'Unknown') checked = false;
-
-                    const statusText = drive.status === 'Unknown' ? 'Attempting Poll' :
-                        drive.status === 'Waiting' ? 'Initialization' :
-                        drive.status === 'Running' && drive.actualSpeed === 0 ? 'Fan Hold' :
-                        drive.status === 'Stopped' ? 'Freespin' :
-                        drive.status === 'NotReady' ? 'Not Ready / Inhibited' :
-                        drive.status === 'Tripped' ? 'Tripped' :
-                        drive.status === 'Unavailable' ? 'Unavailable' :
-                        drive.status === 'Disabled' ? 'Disconnected' :
-                        drive.status === 'Running' ? 'Running' : '';
-
-                    const statusColor = drive.status === 'Stopped' ? '#FFA500' :
-                        drive.status === 'Running' && drive.actualSpeed > 0 ? '#4CAF50' :
-                        drive.status === 'NotReady' ? '#f44336' :
-                        drive.status === 'Tripped' ? '#f44336' :
-                        drive.status === 'Unavailable' ? '#f44336' :
-                        drive.status === 'Freespin' ? '#f44336' :
-                        drive.status === 'Disabled' ? '#555555' :
-                        drive.status === 'Running' && drive.actualSpeed === 0 ? '#f44336' :
-                        '#007bff';
-
-                    driveItem.innerHTML = `
-                        <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-group="${group}" ${checked ? 'checked' : ''} ${drive.status === 'Unknown' ? 'disabled' : ''}>
-                        <span style="flex:1;">
-                            Fan #${drive.fanNumber} <span class="status-box inform">[${drive.fanDesc}]</span> ${drive.ip} >>
-                            <span class="status-box grey" style="width: 60px; text-align: center;">${drive.setSpeed} Hz</span>
-                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualSpeed} Hz</span>
-                            <span class="status-box blue" style="width: 80px; text-align: center;">${drive.rpmSpeed} RPM</span>
-                            <span class="status-box blue" style="width: 100px; text-align: center;">${drive.actualCfm} CFM</span>
-                            <span class="status-box blue" style="width: 50px; text-align: center;">${drive.current} A</span>
-                            <span class="status-box blue" style="width: 60px; text-align: center;">${drive.actualPercent} %</span>
-                            ${drive.clockwise === 1 && drive.actualSpeed > 0 ? '<i class="fa fa-fan fa-spin"></i>' : drive.clockwise === 0 && drive.actualSpeed > 0 ? '<i class="fa fa-fan counter-spin"></i>' :  drive.actualSpeed === 0 ? '<i class="fa fa-fan"></i>' : ''} <span class="status-box" style="background: ${statusColor}; color: white; text-align: center; padding: 4px; border-radius: 4px;">
-                                ${statusText}${countdown}
-                            </span>
+                    const row = document.createElement("div");
+                    row.className = "drive-item";
+                    const checked = (drive.status !== 'Unknown') && (currentCheckboxStates[drive.ip] || false);
+                    row.innerHTML = `
+                        <input type="checkbox" class="drive-checkbox" data-ip="${drive.ip}" data-group="${group}" ${checked ? 'checked' : ''}>
+                        <span class="drive-id">
+                            <span class="drive-fan">FAN ${drive.fanNumber}</span>
+                            <span class="drive-desc">${drive.fanDesc}</span>
+                            <span class="drive-ip">${drive.ip}</span>
                         </span>
+                        <span class="cell setpoint w-hz"><span class="v"></span><small>SET Hz</small></span>
+                        <span class="cell w-hz"><span class="v"></span><small>Hz</small></span>
+                        <span class="cell w-rpm"><span class="v"></span><small>RPM</small></span>
+                        <span class="cell w-cfm"><span class="v"></span><small>CFM</small></span>
+                        <span class="cell w-amp"><span class="v"></span><small>A</small></span>
+                        <span class="cell w-pct"><span class="v"></span><small>%</small></span>
+                        <span class="drive-spin"><i class="fa fa-fan"></i></span>
+                        <span class="drive-status"><span class="lamp"></span><span class="st-text"></span>&nbsp;<span class="stale-note"></span></span>
                     `;
-                    // Control button to enable/disable
-                    let controlBtn = document.createElement('button');
-                    controlBtn.className = 'status-box';
-                    controlBtn.style.marginLeft = '8px';
-                    controlBtn.style.fontSize = '12px';
-                    controlBtn.style.cursor = 'pointer';
-                    if (drive.status === 'Disabled') {
-                        controlBtn.textContent = 'Connect';
-                        controlBtn.style.backgroundColor = '#4CAF50';
-                        controlBtn.onclick = function() {
-                            controlBtn.disabled = true;
-                            fetch('/api/vfdconnect', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ ip: drive.ip })
-                            }); // Wait for WebSocket update
-                        };
-                    } else {
-                        controlBtn.textContent = 'Disconnect';
-                        controlBtn.style.backgroundColor = '#f44336';
-                        controlBtn.onclick = function() {
-                            controlBtn.disabled = true;
-                            fetch('/api/vfdconnect', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ ip: drive.ip })
-                            }); // Wait for WebSocket update
-                        };
-                    }
-                    driveItem.appendChild(controlBtn);
-                    driveList.appendChild(driveItem);
+                    const connBtn = document.createElement('button');
+                    connBtn.className = 'conn-btn';
+                    connBtn.onclick = function () {
+                        connBtn.disabled = true;
+                        fetch('/api/vfdconnect', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ip: drive.ip })
+                        }); // Wait for WebSocket update
+                    };
+                    row.appendChild(connBtn);
+                    driveList.appendChild(row);
+
+                    const cells = row.querySelectorAll('.cell .v');
+                    driveEls[drive.ip] = {
+                        row: row,
+                        checkbox: row.querySelector('.drive-checkbox'),
+                        setHz: cells[0], outHz: cells[1], rpm: cells[2], cfm: cells[3], amps: cells[4], pct: cells[5],
+                        spin: row.querySelector('.drive-spin i'),
+                        status: row.querySelector('.drive-status'),
+                        stText: row.querySelector('.st-text'),
+                        staleNote: row.querySelector('.stale-note'),
+                        connBtn: connBtn
+                    };
                 });
-                groupDiv.appendChild(groupTitleContainer);
+
+                groupDiv.appendChild(head);
                 groupDiv.appendChild(driveList);
                 container.appendChild(groupDiv);
+
+                groupEls[group] = {
+                    root: groupDiv,
+                    cfmEl: head.querySelector('.agg-cfm'),
+                    pctEl: head.querySelector('.agg-pct'),
+                    selectAll: head.querySelector('.select-all')
+                };
             }
+
             document.querySelectorAll(".select-all").forEach(checkbox => {
                 checkbox.addEventListener("change", function () {
                     let group = this.dataset.group;
@@ -330,6 +553,71 @@
                 });
             });
         }
+
+        // In-place patch: runs on every WebSocket message, touches text/classes only
+        function patchValues(groups) {
+            const now = new Date();
+            for (let group in groups) {
+                const g = groupEls[group];
+                if (!g) continue;
+                const drives = groups[group];
+                const totalCfm = drives.reduce((sum, d) => sum + (parseFloat(d.actualCfm) || 0), 0);
+                const avgPercent = drives.length ? drives.reduce((sum, d) => sum + (parseFloat(d.actualPercent) || 0), 0) / drives.length : 0;
+                g.cfmEl.textContent = totalCfm.toLocaleString('en-US');
+                g.pctEl.textContent = avgPercent.toFixed(1);
+
+                drives.forEach(drive => {
+                    const el = driveEls[drive.ip];
+                    if (!el) return;
+
+                    el.setHz.textContent = drive.setSpeed;
+                    el.outHz.textContent = drive.actualSpeed;
+                    el.rpm.textContent = drive.rpmSpeed;
+                    el.cfm.textContent = (parseFloat(drive.actualCfm) || 0).toLocaleString('en-US');
+                    el.amps.textContent = drive.current;
+                    el.pct.textContent = drive.actualPercent;
+
+                    // Fan icon: direction + spin
+                    el.spin.className = drive.clockwise === 1 && drive.actualSpeed > 0 ? 'fa fa-fan fa-spin' :
+                        drive.clockwise === 0 && drive.actualSpeed > 0 ? 'fa fa-fan counter-spin' : 'fa fa-fan';
+
+                    // Status lamp + label
+                    const st = statusInfo(drive);
+                    el.status.classList.remove(...STATUS_CLASSES);
+                    el.status.classList.add(st.cls);
+                    el.stText.textContent = st.text;
+
+                    // Stale-data marker
+                    const timeDiff = (now - new Date(drive.lastUpdated * 1000)) / 1000;
+                    if (timeDiff > 30) {
+                        el.staleNote.textContent = `(Not updated for ${Math.floor(timeDiff)} seconds)`;
+                        el.row.classList.add("stale-data");
+                    } else {
+                        el.staleNote.textContent = '';
+                        el.row.classList.remove("stale-data");
+                    }
+
+                    // Checkbox: unusable while status is Unknown
+                    if (drive.status === 'Unknown') {
+                        el.checkbox.checked = false;
+                        el.checkbox.disabled = true;
+                    } else {
+                        el.checkbox.disabled = false;
+                    }
+
+                    // Connect/Disconnect button follows drive state
+                    const disabledDrive = drive.status === 'Disabled';
+                    el.connBtn.textContent = disabledDrive ? 'Connect' : 'Disconnect';
+                    el.connBtn.className = 'conn-btn ' + (disabledDrive ? 'connect' : 'disconnect');
+                    el.connBtn.disabled = false;
+                });
+
+                // Keep the group's select-all in sync with its drives
+                const allChecked = drives.every(d => driveEls[d.ip] && driveEls[d.ip].checkbox.checked);
+                g.selectAll.checked = allChecked;
+            }
+        }
+
         function updateControlEvents() {
             fetch('/api/control-events')
                 .then(response => response.json())
@@ -339,6 +627,9 @@
                 });
         }
         function updateControlEventsUI() {
+            const json = JSON.stringify(controlEvents);
+            if (json === lastEventsJSON) return; // unchanged: keep DOM (and scroll position) intact
+            lastEventsJSON = json;
             const controlEventsDiv = document.getElementById('control-events');
             controlEventsDiv.innerHTML = '';
             controlEvents.slice().reverse().forEach(event => {
@@ -347,14 +638,11 @@
                 const timestamp = new Date(event.timestamp);
                 const formattedDate = `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, '0')}-${String(timestamp.getDate()).padStart(2, '0')} ${String(timestamp.getHours()).padStart(2, '0')}:${String(timestamp.getMinutes()).padStart(2, '0')}:${String(timestamp.getSeconds()).padStart(2, '0')}`;
                 eventDiv.innerHTML = `
-                    <div>
-                        <span class="timestamp">${formattedDate}</span>
-                        <span class="event-box" style="background-color: #007bff; color: white;">
-                        ${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</span>
-                    </div>
-                    ${event.drives.map(drive => `
-                        <span class="devices-box" style="background-color: ${drive.success ? '#4CAF50' : '#f44336'}; color: white;">${drive.ip}${drive.error ? ` - ${drive.error}` : ''}</span>
-                    `).join('')}
+                    <span class="timestamp">${formattedDate}</span>
+                    <span class="event-box">${event.action === 'SetSpeed' ? `Set ${event.speed} Hz` : event.action}</span>
+                    <div>${event.drives.map(drive => `
+                        <span class="devices-box ${drive.success ? 'ok' : 'fail'}">${drive.ip}${drive.error ? ` - ${drive.error}` : ''}</span>
+                    `).join('')}</div>
                 `;
                 controlEventsDiv.appendChild(eventDiv);
             });
@@ -520,10 +808,11 @@
             if (!btn) return;
             const targets = (lastDriveData || []).filter(d => d.status === 'Unavailable' || d.status === 'Disconnected').map(d => d.ip);
             if (targets.length === 0) {
-                btn.textContent = 'Reconnect Unavailable VFDs';
+                btn.textContent = '↻ Reconnect Unavailable VFDs';
                 return;
             }
             btn.disabled = true;
+            btn.dataset.busy = '1';
             const originalText = btn.textContent;
             btn.textContent = `Reconnecting ${targets.length}...`;
             try {
@@ -542,6 +831,7 @@
             } catch (e) {
                 console.error('Reconnect error', e);
             } finally {
+                delete btn.dataset.busy;
                 btn.disabled = false;
                 btn.textContent = originalText;
             }
@@ -550,60 +840,89 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>VFD Control Panel</h1>
-        </div>
-        <div class="control-panel" style="display: flex; align-items: center; justify-content: space-between;">
-            <div class="fan-buttons"><span class="control-button-title">Fan Controls</span><br>
-                <input type="number" id="speed-value" step=".1" placeholder="Speed (Hz)" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required> <span class="speed-legend">Hz</span>&nbsp;&nbsp;
-                <input type="number" id="percent-value" step=".1" placeholder="Speed (%)" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required> <span class="speed-legend">%</span>&nbsp;&nbsp;
-                <button class="set-speed" tooltip="Sets VFD speed and starts it." onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>&nbsp;&nbsp; | &nbsp;&nbsp;
-                <button class="start" tooltip="Starts the VFD using previously set speed." onclick="sendControl('Start')">Start</button>
-                <button class="stop" tooltip="Stops the VFD." onclick="sendControl('Stop')">Stop</button>
-                <span id="fanhold-button" style="display: none;">
-                    <button class="fanhold" tooltip="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning"onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
-                </span>
-		&nbsp;&nbsp; | &nbsp;&nbsp;
-                <button class="curtail" id="curtail-button" tooltip="Curtail selected groups or all fans." onclick="toggleCurtail()"><span id="curtail-text">Curtail</span></button>
-		&nbsp;&nbsp; | &nbsp;&nbsp;
-                <input type="checkbox" id="select-all" onclick="selectAllDrives()">Select All
+        <header class="topbar">
+            <div class="brand">
+                <h1>VFD Control Panel</h1>
+                <span class="ws-chip stale" id="wsChip"><span class="lamp"></span><span>STALE</span></span>
             </div>
-            <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
-                <button id="reconnectUnavailableBtn" title="Disconnect then reconnect all VFDs currently Unavailable" style="padding:6px 12px; border-radius:6px; border:none; background:#0d6efd; color:#fff; font-size:14px; cursor:pointer;">↻ Reconnect Unavailable VFDs</button>
-                <button id="darkModeToggle" style="padding: 8px 18px; border-radius: 6px; border: none; background: #23272a; color: #fff; font-size: 16px; cursor: pointer;">🌙 Dark Mode</button>
+            <div class="topbar-actions">
+                <button id="apiModalBtn" class="btn subtle">🌍 Remote Control API</button>
+                <button id="darkModeToggle" class="btn subtle">🌙 Dark Mode</button>
             </div>
-        </div>
-        <button id="apiModalBtn" style="position:fixed;bottom:24px;right:32px;z-index:1100;padding:8px 18px;border-radius:6px;border:none;background:#007bff;color:#fff;font-size:16px;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:background 0.2s;">🌍 Remote Control API</button>
-        <div id="apiModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; overflow:auto; background:rgba(0,0,0,0.5);">
-          <div style="background:#fff; margin:5% auto; padding:30px 24px 24px 24px; border-radius:12px; max-width:600px; position:relative; box-shadow:0 4px 32px rgba(0,0,0,0.2); font-size:16px;">
-            <button onclick="document.getElementById('apiModal').style.display='none'" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:28px; color:#333; cursor:pointer;">&times;</button>
-            <h2 style="margin-top:0;">🌍 Remote Control API</h2>
+        </header>
+
+        <section class="control-panel">
+            <div class="cluster">
+                <span class="cluster-label">Speed</span>
+                <div class="cluster-row">
+                    <span class="speed-field">
+                        <input type="number" id="speed-value" step=".1" placeholder="0.0" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required>
+                        <span class="speed-legend">Hz</span>
+                    </span>
+                    <span class="speed-field">
+                        <input type="number" id="percent-value" step=".1" placeholder="0.0" onkeydown="if(event.key==='Enter'){sendControl('SetSpeed', document.getElementById('speed-value').value);}" required>
+                        <span class="speed-legend">%</span>
+                    </span>
+                    <button class="btn set-speed" title="Sets VFD speed and starts it." onclick="sendControl('SetSpeed', document.getElementById('speed-value').value)">Set Speed</button>
+                </div>
+            </div>
+            <div class="cluster">
+                <span class="cluster-label">Commands</span>
+                <div class="cluster-row">
+                    <button class="btn start" title="Starts the VFD using previously set speed." onclick="sendControl('Start')">Start</button>
+                    <button class="btn stop" title="Stops the VFD." onclick="sendControl('Stop')">Stop</button>
+                    <span id="fanhold-button" style="display: none;">
+                        <button class="btn fanhold" title="Sets the VFD speed at 0 and keeps the VFD to ON. This stops blades from spinning" onclick="sendControl('Fanhold')">Fan Hold (0 Hz)</button>
+                    </span>
+                </div>
+            </div>
+            <div class="cluster">
+                <span class="cluster-label">Load</span>
+                <div class="cluster-row">
+                    <button class="btn curtail" id="curtail-button" title="Curtail selected groups or all fans." onclick="toggleCurtail()"><span id="curtail-text">Curtail</span></button>
+                </div>
+            </div>
+            <div class="cluster">
+                <span class="cluster-label">Selection</span>
+                <label class="checkline"><input type="checkbox" id="select-all" onclick="selectAllDrives()"> Select all fans</label>
+            </div>
+            <div class="cluster right">
+                <span class="cluster-label">Connectivity</span>
+                <div class="cluster-row">
+                    <button id="reconnectUnavailableBtn" class="btn reconnect" title="Disconnect then reconnect all VFDs currently Unavailable">↻ Reconnect Unavailable VFDs</button>
+                </div>
+            </div>
+        </section>
+
+        <div id="apiModal" class="modal">
+          <div class="modal-card">
+            <button class="modal-close" onclick="document.getElementById('apiModal').style.display='none'">&times;</button>
+            <h2>🌍 Remote Control API</h2>
             <div style="overflow-x:auto; max-width:100%;">
               <div style="margin-bottom:18px;">
                 <b>Remotely control the VFD server by sending JSON commands to its HTTP endpoints.</b><br>
                 All endpoints are accessible on <code>http://<span class="api-host"></span></code> (as set in your config).
               </div>
-              <h3 style="margin-bottom:6px;">🖥️ <b>/api/devices</b> (GET)</h3>
+              <h3>🖥️ <b>/api/devices</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of all drives, including their configuration (from config) and current live data (setpoint, speed, rpm, cfm, amps, status, etc.).</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;"><code>curl http://<span class="api-host"></span>/api/devices</code></div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+              <div class="codeblock"><code>curl http://<span class="api-host"></span>/api/devices</code></div>
+              <div class="codeblock">
                 <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"IP": "10.33.30.11",<br>&nbsp;&nbsp;&nbsp;&nbsp;"DriveType": "OptidriveE3",<br>&nbsp;&nbsp;&nbsp;&nbsp;"Group": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanNumber": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"FanDesc": "1x 1800RPM 29.5kCFM",<br>&nbsp;&nbsp;&nbsp;&nbsp;"RpmHz": 30,<br>&nbsp;&nbsp;&nbsp;&nbsp;"CfmRpm": 16.38888888,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Port": 502,<br>&nbsp;&nbsp;&nbsp;&nbsp;"Unit": 1,<br>&nbsp;&nbsp;&nbsp;&nbsp;"setSpeed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualSpeed": 44.8,<br>&nbsp;&nbsp;&nbsp;&nbsp;"rpmSpeed": 1344,<br>&nbsp;&nbsp;&nbsp;&nbsp;"actualCfm": 22000,<br>&nbsp;&nbsp;&nbsp;&nbsp;"current": 8.2,<br>&nbsp;&nbsp;&nbsp;&nbsp;"status": "Running",<br>&nbsp;&nbsp;&nbsp;&nbsp;"lastUpdated": 1718030000<br>&nbsp;&nbsp;&nbsp;&nbsp;// ... other live fields ...<br>&nbsp;&nbsp;}<br>]</code>
               </div>
               <div style="margin-bottom:18px;">Returns an array of objects, each containing both static config and live data for every drive.</div>
-              <h3 style="margin-bottom:6px;">🔗 <b>/api/control</b> (POST)</h3>
+              <h3>🔗 <b>/api/control</b> (POST)</h3>
               <div style="margin-bottom:8px;">Remotely start, stop, set speed, or hold fans.<br>Accepts a JSON payload with the following elements:</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:14px; margin-bottom:8px;">
+              <div class="codeblock">
                 <code>{<br>&nbsp;&nbsp;"drives": ["10.33.30.11", "10.33.30.12"],<br>&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;"speed": 45.0<br>}</code>
               </div>
               <div style="margin-bottom:8px;">Query Elements:</div>
-              <ul style="font-size:14px; margin-bottom:8px;">
+              <ul>
                 <li><b>drives</b>: Array of VFD IPs to control</li>
                 <li><b>action</b>: Control action (see below)</li>
                 <li><b>speed</b>: Frequency in Hz for SetSpeed action only (Optional)</li>
               </ul>
-              </div>
               <div style="margin-bottom:8px;">Actions:</div>
-              <ul style="font-size:14px; margin-bottom:8px;">
+              <ul>
                 <li>▶️ <b>Start</b>: Start the selected drives</li>
                 <li>⏹️ <b>Stop</b>: Stop the selected drives</li>
                 <li>🛑 <b>Fanhold</b>: Set speed to 0 Hz but keep drive enabled</li>
@@ -611,39 +930,39 @@
                 <li>⏲ <b>SetSpeed</b>: Set the speed (Hz) and start the drive</li>
               </ul>
               <div style="margin-bottom:8px;">Example <b>curl</b> command:</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div class="codeblock">
                 <code>curl -X POST http://<span class="api-host"></span>/api/control \<br>  -H 'Content-Type: application/json' \<br>  -d '{"drives": ["10.33.30.11"], "action": "SetSpeed", "speed": 45.0}'</code>
               </div>
               <div style="margin-bottom:18px;">✅ <b>Success:</b> <code>200 OK</code> with message <i>Control action processed successfully</i> or error details</div>
 
-              <h3 style="margin-bottom:6px;">📜 <b>/api/control-events</b> (GET)</h3>
+              <h3>📜 <b>/api/control-events</b> (GET)</h3>
               <div style="margin-bottom:8px;">Fetch a list of recent control events (for audit/logging).</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div class="codeblock">
                 <code>curl http://<span class="api-host"></span>/api/control-events</code>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+              <div class="codeblock">
                 <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"timestamp": "2024-06-10T12:34:56Z",<br>&nbsp;&nbsp;&nbsp;&nbsp;"action": "SetSpeed",<br>&nbsp;&nbsp;&nbsp;&nbsp;"speed": 45.0,<br>&nbsp;&nbsp;&nbsp;&nbsp;"drives": [<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.11", "success": true },<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{ "ip": "10.33.30.12", "success": false, "error": "Tripped" }<br>&nbsp;&nbsp;&nbsp;&nbsp;]<br>&nbsp;&nbsp;}<br>]</code>
               </div>
 
-              <h3 style="margin-bottom:6px;">🔌 <b>/api/vfdconnect</b> (POST)</h3>
+              <h3>🔌 <b>/api/vfdconnect</b> (POST)</h3>
               <div style="margin-bottom:8px;">Connect or disconnect a VFD by IP. Used by the UI to reconnect or disconnect a drive. This is merely a toggle, so invoking this does not specify whether to turn it on or off, it just change it's status.</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div class="codeblock">
                 <code>{ "ip": "10.33.30.11" }</code>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:18px;">
+              <div class="codeblock">
                 <code>curl -X POST http://<span class="api-host"></span>/api/vfdconnect \<br>  -H 'Content-Type: application/json' \<br>  -d '{"ip": "10.33.30.11"}'</code>
               </div>
 
-              <h3 style="margin-bottom:6px;">📊 <b>/api/status</b> (GET)</h3>
+              <h3>📊 <b>/api/status</b> (GET)</h3>
               <div style="margin-bottom:8px;">Get system status information including loading state, connection status, and data collection metrics.</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div class="codeblock">
                 <code>curl http://<span class="api-host"></span>/api/status</code>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+              <div class="codeblock">
                 <code>{<br>&nbsp;&nbsp;"loading": false,<br>&nbsp;&nbsp;"ready": true,<br>&nbsp;&nbsp;"initialConnectionsDone": true,<br>&nbsp;&nbsp;"totalVFDs": 24,<br>&nbsp;&nbsp;"connectedVFDs": 22,<br>&nbsp;&nbsp;"healthyVFDs": 21,<br>&nbsp;&nbsp;"lastUpdateTime": "2025-08-06T12:34:56Z",<br>&nbsp;&nbsp;"dataCollectionAge": "5.2s"<br>}</code>
               </div>
               <div style="margin-bottom:8px;">Response Fields:</div>
-              <ul style="font-size:14px; margin-bottom:18px;">
+              <ul>
                 <li><b>loading</b>: True if system is still establishing initial connections</li>
                 <li><b>ready</b>: True if system has completed initial setup and is operational</li>
                 <li><b>initialConnectionsDone</b>: True after first connection attempt to all VFDs</li>
@@ -654,22 +973,22 @@
                 <li><b>dataCollectionAge</b>: How long ago data was last collected</li>
               </ul>
 
-              <h3 style="margin-bottom:6px;">🔻 <b>/api/curtail</b> (POST)</h3>
+              <h3>🔻 <b>/api/curtail</b> (POST)</h3>
               <div style="margin-bottom:8px;">Curtail and resume VFD operations. Curtailment saves the current state of all or selected drives, stops them, and allows resuming to their previous state later.</div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div class="codeblock">
                 <b>Curtail Request:</b><br>
                 <code>{ "action": "curtail", "groups": ["1", "B1-A"] }</code><br>
-                <span style="font-size:11px; color:#666;">// Empty groups array = curtail all drives</span>
+                <span class="note">// Empty groups array = curtail all drives</span>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px;">
+              <div class="codeblock">
                 <b>Resume Request:</b><br>
                 <code>{ "action": "resume" }</code>
               </div>
-              <div style="background:#f4f7fc; border-radius:8px; padding:10px; font-size:13px; margin-bottom:8px; overflow-x:auto;">
+              <div class="codeblock">
                 <code>curl -X POST http://<span class="api-host"></span>/api/curtail \<br>  -H 'Content-Type: application/json' \<br>  -d '{"action": "curtail", "groups": ["1"]}'</code>
               </div>
               <div style="margin-bottom:8px;">How it works:</div>
-              <ul style="font-size:14px; margin-bottom:18px;">
+              <ul>
                 <li><b>Curtail</b>: Saves current setpoint and status, stops all affected drives, stores state in /etc/vfd/curtailment_state.json</li>
                 <li><b>Resume</b>: Loads saved state, restores each drive to previous speed/state, clears state file</li>
                 <li><b>Groups</b>: If no groups specified, curtails ALL drives</li>
@@ -678,12 +997,13 @@
             </div>
           </div>
         </div>
+
         <div class="drives-box">
             <div id="drive-container" class="drives-panel"></div>
-            <div class="control-events-panel">
+            <aside class="control-events-panel">
                 <h2>Control Events</h2>
                 <div id="control-events"></div>
-            </div>
+            </aside>
         </div>
     </div>
 </body>

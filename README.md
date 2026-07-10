@@ -535,6 +535,12 @@ server {
 
 ## 🧾 Recent Changes
 
+**2026-07 — UI redesign (v3.8.1)**
+- Instrument-panel look: dot-matrix (Doto) annunciator headers, IBM Plex Mono readouts with aligned columns, LED status lamps; color now signals state only (green running / amber stopped / red fault / grey offline)
+- Flicker-free live updates: drive rows update in place instead of rebuilding the DOM every second; the events feed only re-renders on change
+- WebSocket auto-reconnect with a LIVE/STALE indicator in the header (a dropped socket previously froze the page until reload)
+- Theme-aware API modal, tidied control panel with labeled clusters, responsive mobile layout, reduced-motion support
+
 **2026-07 — Concurrency fixes, hardening, and tests (v3.8.1)**
 - Fixed a data race on the disabled-drives map that could crash the whole server (concurrent map read/write panic)
 - Guaranteed exactly one connection-manager goroutine per drive; disable/enable cycles previously leaked duplicate managers fighting over the same drive (a problem for CFW500, which accepts only one TCP connection)
